@@ -1171,6 +1171,12 @@
   color: #fff !important;
 }
 
+.status-auto-approved {
+  background-color: #0d9488;
+  /* Teal 600 */
+  color: #fff !important;
+}
+
 .status-rejected {
   background-color: #dc2626;
   /* Red 600 */

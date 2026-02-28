@@ -2632,7 +2632,9 @@ const LeaveApplyPage: React.FC = () => {
                             {request.currentStatus === 'pending' ? (
                               <span className="status-badge status-applied">Applied</span>
                             ) : request.currentStatus === 'approved' ? (
-                              <span className="status-badge status-approved">Approved</span>
+                              <span className={`status-badge ${request.isAutoApproved ? 'status-auto-approved' : 'status-approved'}`}>
+                                {request.isAutoApproved ? 'Auto Approved' : 'Approved'}
+                              </span>
                             ) : request.currentStatus === 'rejected' ? (
                               <span className="status-badge status-rejected" title={request.rejectionReason || 'Rejected'}>
                                 Rejected

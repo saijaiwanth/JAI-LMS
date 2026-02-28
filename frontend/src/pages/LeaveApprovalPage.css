@@ -320,6 +320,12 @@
   box-shadow: 0 4px 12px rgba(0, 200, 83, 0.2);
 }
 
+.status-auto-approved {
+  background: linear-gradient(135deg, #00bfa5 0%, #00d4c1 100%);
+  color: #fff !important;
+  box-shadow: 0 4px 12px rgba(0, 191, 165, 0.2);
+}
+
 .status-rejected {
   background: linear-gradient(135deg, #ff5252 0%, #ff8080 100%);
   color: #fff !important;

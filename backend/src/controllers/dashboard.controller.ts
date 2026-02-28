@@ -190,7 +190,8 @@ export const getAnalytics = async (req: AuthRequest, res: Response) => {
         // 3. Employees On Leave Today
         const leavesTodayQuery = `
             SELECT 
-                u.id,
+                lr.id,
+                u.id as employee_id,
                 u.first_name || ' ' || COALESCE(u.last_name, '') as name,
                 u.emp_id,
                 u.profile_photo_url,
@@ -204,14 +205,42 @@ export const getAnalytics = async (req: AuthRequest, res: Response) => {
             ORDER BY u.first_name ASC
         `;
 
-        const [weeklyTime, workStatus, leavesToday] = await Promise.all([
+        // 4. Upcoming Leaves (Approved leaves starting from tomorrow)
+        const upcomingLeavesQuery = `
+            SELECT 
+                lr.id,
+                u.id as employee_id,
+                u.first_name || ' ' || COALESCE(u.last_name, '') as name,
+                u.emp_id,
+                u.profile_photo_url,
+                lr.start_date,
+                lr.end_date,
+                lr.leave_type
+            FROM leave_requests lr
+            JOIN users u ON lr.employee_id = u.id
+            WHERE lr.start_date > (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE
+              AND lr.current_status = 'approved'
+            ORDER BY lr.start_date ASC
+            LIMIT 10
+        `;
+
+        const [weeklyTime, workStatus, leavesToday, upcomingLeaves] = await Promise.all([
             pool.query(weeklyTimeQuery),
             pool.query(workStatusQuery),
-            pool.query(leavesTodayQuery)
+            pool.query(leavesTodayQuery),
+            pool.query(upcomingLeavesQuery)
         ]);
 
         // Process profile photo URLs for leavesToday
         const leavesTodayProcessed = leavesToday.rows.map((row: any) => {
+            if (row.profile_photo_url && row.profile_photo_url.startsWith('profile-photos/')) {
+                row.profile_photo_url = getPublicUrlFromOVH(row.profile_photo_url);
+            }
+            return row;
+        });
+
+        // Process profile photo URLs for upcomingLeaves
+        const upcomingLeavesProcessed = upcomingLeaves.rows.map((row: any) => {
             if (row.profile_photo_url && row.profile_photo_url.startsWith('profile-photos/')) {
                 row.profile_photo_url = getPublicUrlFromOVH(row.profile_photo_url);
             }
@@ -223,7 +252,8 @@ export const getAnalytics = async (req: AuthRequest, res: Response) => {
             data: {
                 weeklyTime: weeklyTime.rows,
                 workStatus: workStatus.rows,
-                leavesToday: leavesTodayProcessed
+                leavesToday: leavesTodayProcessed,
+                upcomingLeaves: upcomingLeavesProcessed
             }
         });
     } catch (error: any) {

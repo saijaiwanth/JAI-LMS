@@ -838,6 +838,7 @@ export const getMyLeaveRequests = async (
         rejectionReason,
         approverName,
         approverRole,
+        isAutoApproved: approverName === 'Auto Approved',
         doctorNote: row.doctor_note || null,
         // HR and Super Admin can edit/delete any leave, regular users can only edit/delete pending leaves
         canEdit: row.current_status === 'pending' || userRole === 'hr' || userRole === 'super_admin',
@@ -909,7 +910,7 @@ export const getLeaveRequestById = async (requestId: number, userId: number, use
       LEFT JOIN users sa ON lr.super_admin_approved_by = sa.id
       WHERE lr.id = $1 
       AND (
-           $3 = 'super_admin'             -- Super Admin sees all
+           $3 IN ('super_admin', 'hr')    -- Super Admin and HR see all
         OR lr.employee_id = $2            -- It's my own request
         OR u.reporting_manager_id = $2    -- I am Direct Manager (L1)
         OR l1.reporting_manager_id = $2   -- I am Manager's Manager (L2/HR)
@@ -1021,6 +1022,7 @@ export const getLeaveRequestById = async (requestId: number, userId: number, use
     rejectionReason,
     approverName,
     approverRole,
+    isAutoApproved: approverName === 'Auto Approved',
     timeForPermission: row.time_for_permission_start && row.time_for_permission_end ? {
       start: typeof row.time_for_permission_start === 'string' ? row.time_for_permission_start : row.time_for_permission_start.toString().substring(0, 5),
       end: typeof row.time_for_permission_end === 'string' ? row.time_for_permission_end : row.time_for_permission_end.toString().substring(0, 5)
@@ -1758,13 +1760,13 @@ export const getPendingLeaveRequests = async (
 
   const params: any[] = [];
 
-  // SUPER ADMIN: Global Visibility (All leaves except own)
-  if (normalizedRole === 'super_admin') {
+  // SUPER ADMIN & HR: Global Visibility (All leaves except own)
+  if (normalizedRole === 'super_admin' || normalizedRole === 'hr') {
     query += ` AND lr.employee_id != $1`;
     params.push(approverId);
   }
-  // HR & MANAGER: Strict Hierarchy (L1 only) - Can only approve their direct reports
-  else if (normalizedRole === 'hr' || normalizedRole === 'manager') {
+  // MANAGER: Strict Hierarchy (L1 only) - Can only approve their direct reports
+  else if (normalizedRole === 'manager') {
     query += ` AND u.reporting_manager_id = $1 AND lr.employee_id != $1`;
     params.push(approverId);
   } else {
@@ -1969,13 +1971,13 @@ export const getPendingLeaveRequests = async (
   `;
   const countParams: any[] = [];
 
-  // SUPER ADMIN: Global Visibility
-  if (normalizedRole === 'super_admin') {
+  // SUPER ADMIN & HR: Global Visibility
+  if (normalizedRole === 'super_admin' || normalizedRole === 'hr') {
     countQuery += ` AND lr.employee_id != $1`;
     countParams.push(approverId);
   }
-  // HR & MANAGER: Strict Hierarchy (L1 only) - Match Main Query
-  else if (normalizedRole === 'hr' || normalizedRole === 'manager') {
+  // MANAGER: Strict Hierarchy (L1 only) - Match Main Query
+  else if (normalizedRole === 'manager') {
     countQuery += ` AND u.reporting_manager_id = $1 AND lr.employee_id != $1`;
     countParams.push(approverId);
   }
@@ -4132,17 +4134,9 @@ export const getApprovedLeaves = async (
         )
   `;
 
-  // SUPER ADMIN: Global (except own)
-  if (normalizedRole === 'super_admin') {
+  // SUPER ADMIN & HR: Global Visibility (All leaves except own)
+  if (normalizedRole === 'super_admin' || normalizedRole === 'hr') {
     query += ` AND lr.employee_id != $${params.length + 1}`;
-    params.push(approverId);
-  }
-  // HR: Strict Hierarchy (L1/L2) + Role Exclusion
-  else if (normalizedRole === 'hr') {
-    query += ` AND lr.employee_id != $${params.length + 1} AND (
-       u.reporting_manager_id = $${params.length + 1}
-       OR l1.reporting_manager_id = $${params.length + 1}
-     ) AND LOWER(u.user_role) IN ('intern', 'employee', 'manager')`;
     params.push(approverId);
   }
   // MANAGER: Direct Reports
@@ -4175,17 +4169,9 @@ export const getApprovedLeaves = async (
 
   const countParams: any[] = [];
 
-  // SUPER ADMIN: Global (except own)
-  if (normalizedRole === 'super_admin') {
+  // SUPER ADMIN & HR: Global Visibility (All leaves except own)
+  if (normalizedRole === 'super_admin' || normalizedRole === 'hr') {
     countQuery += ` AND lr.employee_id != $${countParams.length + 1}`;
-    countParams.push(approverId);
-  }
-  // HR: Strict Hierarchy (L1/L2) + Role Exclusion
-  else if (normalizedRole === 'hr') {
-    countQuery += ` AND lr.employee_id != $${countParams.length + 1} AND (
-       u.reporting_manager_id = $${countParams.length + 1}
-       OR l1.reporting_manager_id = $${countParams.length + 1}
-     ) AND LOWER(u.user_role) IN ('intern', 'employee', 'manager')`;
     countParams.push(approverId);
   }
   // MANAGER: Direct Reports
@@ -4321,6 +4307,7 @@ export const getApprovedLeaves = async (
       rejectionReason,
       approverName,
       approverRole,
+      isAutoApproved: approverName === 'Auto Approved',
       lastUpdatedByRole: row.last_updated_by_role || null,
       canEdit,
       canDelete,

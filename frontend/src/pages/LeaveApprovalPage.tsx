@@ -1077,7 +1077,9 @@ const LeaveApprovalPage: React.FC = () => {
                             {request.leaveStatus === 'pending' ? (
                               <span className="status-badge status-pending">Pending</span>
                             ) : request.leaveStatus === 'approved' ? (
-                              <span className="status-badge status-approved">Approved</span>
+                              <span className={`status-badge ${request.isAutoApproved ? 'status-auto-approved' : 'status-approved'}`}>
+                                {request.isAutoApproved ? 'Auto Approved' : 'Approved'}
+                              </span>
                             ) : request.leaveStatus === 'rejected' ? (
                               <span className="status-badge status-rejected">Rejected</span>
                             ) : request.leaveStatus === 'partially_approved' ? (

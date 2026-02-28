@@ -378,7 +378,7 @@ const LeaveDetailsModal: React.FC<LeaveDetailsModalProps> = ({
     }
 
     if (approvedDays.length > 0) {
-      return 'Approved';
+      return (leaveRequest as any).isAutoApproved ? 'Auto Approved' : 'Approved';
     }
 
     if (rejectedDays.length > 0) {
@@ -705,7 +705,7 @@ const LeaveDetailsModal: React.FC<LeaveDetailsModalProps> = ({
                   </DropdownMenu>
                 ) : (
                   <div className="leave-detail-value">
-                    <span className={`status-badge status-${getStatusLabel().toLowerCase().replace(' ', '-')}`}>
+                    <span className={`status-badge status-${getStatusLabel().toLowerCase().replace(/\s+/g, '-')}`}>
                       {getStatusLabel()}
                     </span>
                   </div>

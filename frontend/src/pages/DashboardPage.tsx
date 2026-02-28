@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from 'react-query';
 import AppLayout from '../components/layout/AppLayout';
 import * as dashboardService from '../services/dashboardService';
+import * as leaveService from '../services/leaveService';
 import { useAuth } from '../contexts/AuthContext';
+import LeaveDetailsModal from '../components/LeaveDetailsModal';
+import { format } from 'date-fns';
 import './DashboardPage.css';
 import {
     ResponsiveContainer,
@@ -40,6 +43,8 @@ const DEFAULT_COLORS = ['#3c6ff2', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '
 const DashboardPage: React.FC = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const [selectedRequest, setSelectedRequest] = useState<any>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     // Fetch stats
     const { data: statsData } = useQuery('dashboardStats', dashboardService.getStats, {
@@ -57,6 +62,7 @@ const DashboardPage: React.FC = () => {
     const weeklyTime = analyticsData?.weeklyTime || [];
     const workStatus = analyticsData?.workStatus || [];
     const leavesToday = analyticsData?.leavesToday || [];
+    const upcomingLeaves = analyticsData?.upcomingLeaves || [];
 
     // Parse counts to numbers (backend sends strings for BigInt)
     const wt = weeklyTime[0] || {};
@@ -87,6 +93,16 @@ const DashboardPage: React.FC = () => {
             navigate(`/employee-management?role=${role}`);
         } else {
             navigate('/employee-management');
+        }
+    };
+
+    const handleLeaveClick = async (leave: any) => {
+        try {
+            const data = await leaveService.getLeaveRequest(leave.id);
+            setSelectedRequest(data);
+            setIsModalOpen(true);
+        } catch (error) {
+            console.error('Failed to fetch leave details:', error);
         }
     };
 
@@ -152,7 +168,12 @@ const DashboardPage: React.FC = () => {
                             ) : leavesToday.length > 0 ? (
                                 <div className="leave-list">
                                     {leavesToday.map((leave: any) => (
-                                        <div key={leave.id} className="leave-item">
+                                        <div
+                                            key={leave.id}
+                                            className="leave-item clickable"
+                                            onClick={() => handleLeaveClick(leave)}
+                                            style={{ cursor: 'pointer' }}
+                                        >
                                             <div className="employee-info">
                                                 <div className="profile-img-container">
                                                     {leave.profile_photo_url ? (
@@ -283,6 +304,85 @@ const DashboardPage: React.FC = () => {
                         </div>
                     </div>
                 </div>
+
+                {/* Second Analytics Row */}
+                <div className="analytics-grid" style={{ marginTop: '24px' }}>
+                    {/* 4. Upcoming Leaves */}
+                    <div className="analytics-card" style={{ gridColumn: 'span 3' }}>
+                        <h3 className="card-title">
+                            Upcoming Leaves
+                            <span className="count-badge">{upcomingLeaves.length}</span>
+                        </h3>
+                        <div className="leave-list-container" style={{ maxHeight: '400px' }}>
+                            {isAnalyticsLoading ? (
+                                <div className="loading-shimmer"></div>
+                            ) : upcomingLeaves.length > 0 ? (
+                                <div className="leave-list horizontal">
+                                    {upcomingLeaves.map((leave: any) => (
+                                        <div
+                                            key={leave.id}
+                                            className="leave-item clickable"
+                                            onClick={() => handleLeaveClick(leave)}
+                                            style={{
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s ease',
+                                                padding: '12px',
+                                                border: '1px solid #f1f5f9'
+                                            }}
+                                        >
+                                            <div className="employee-info">
+                                                <div className="profile-img-container">
+                                                    {leave.profile_photo_url ? (
+                                                        <img src={leave.profile_photo_url} alt={leave.name} className="employee-img" />
+                                                    ) : (
+                                                        <div className="employee-initials">
+                                                            {leave.name.split(' ').map((n: string) => n[0]).join('')}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="employee-details">
+                                                    <span className="emp-name">{leave.name}</span>
+                                                    <span className="emp-id">{leave.emp_id}</span>
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                                                <span className="leave-dates" style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
+                                                    {format(new Date(leave.start_date), 'dd MMM')} - {format(new Date(leave.end_date), 'dd MMM')}
+                                                </span>
+                                                <div className="leave-badge">
+                                                    <span className={`badge ${leave.leave_type}`}>
+                                                        {leave.leave_type.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="no-data-msg" style={{ flexDirection: 'column', gap: '12px', height: '150px' }}>
+                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                                    </svg>
+                                    <span style={{ color: '#6b7280', fontSize: '14px', fontWeight: 500 }}>No upcoming leaves scheduled</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {selectedRequest && (
+                    <LeaveDetailsModal
+                        isOpen={isModalOpen}
+                        onClose={() => {
+                            setIsModalOpen(false);
+                            setSelectedRequest(null);
+                        }}
+                        leaveRequest={selectedRequest}
+                        userRole={user?.role || ''}
+                        onApprove={() => { }}
+                        onReject={() => { }}
+                    />
+                )}
             </div>
         </AppLayout>
     );
