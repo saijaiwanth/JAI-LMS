@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useNavigate } from 'react-router-dom';
 import AppLayout from '../components/layout/AppLayout';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -15,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
 import { Button } from '../components/ui/button';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Bell } from 'lucide-react';
 import * as leaveService from '../services/leaveService';
 import * as employeeService from '../services/employeeService';
 import { format, addDays, eachDayOfInterval } from 'date-fns';
@@ -25,6 +26,7 @@ import './LeaveApplyPage.css';
 
 const LeaveApplyPage: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { showSuccess, showError, showWarning } = useToast();
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -604,6 +606,17 @@ const LeaveApplyPage: React.FC = () => {
     {
       enabled: canApplyForOthers,
       staleTime: 60000
+    }
+  );
+
+  // Fetch pending requests for notification badge
+  const { data: pendingData } = useQuery(
+    ['pendingLeavesNotification', user?.role],
+    () => leaveService.getPendingLeaveRequests(1, 1, undefined, undefined), // limit to 1 just to get total count
+    {
+      staleTime: 60000,
+      refetchInterval: 60000,
+      enabled: !!user && user.role === 'manager', // Restrict to managers only per new spec
     }
   );
 
@@ -1744,29 +1757,76 @@ const LeaveApplyPage: React.FC = () => {
             )}
           </h2>
 
-          {canApplyForOthers && (
-            <div className="employee-select-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingRight: '20px' }}>
-              <label style={{ fontWeight: 500, color: '#4b5563' }}>Applying for:</label>
-              <select
-                className="form-control"
-                style={{ width: '250px' }}
-                value={selectedEmployeeId || ''}
-                onChange={(e) => setSelectedEmployeeId(e.target.value ? Number(e.target.value) : null)}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            {pendingData?.pagination?.total > 0 && user?.role === 'manager' && (
+              <div
+                className="pending-notification-badge"
+                onClick={() => navigate('/leave-approval')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: '#fff',
+                  padding: '8px 16px',
+                  borderRadius: '20px',
+                  cursor: 'pointer',
+                  border: '1px solid #d1d5db',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                  transition: 'all 0.2s',
+                  color: '#4b5563',
+                  fontWeight: '500'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
               >
-                <option value="">Myself</option>
-                {allEmployees
-                  .filter((emp: any) =>
-                    ['intern', 'employee', 'manager', 'hr'].includes(emp.role) &&
-                    emp.id !== user?.id
-                  )
-                  .map((emp: any) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.name} ({emp.empId || emp.emp_id})
-                    </option>
-                  ))}
-              </select>
-            </div>
-          )}
+                <div style={{ position: 'relative' }}>
+                  <Bell size={20} color="#3c6ff2" />
+                  <span style={{
+                    position: 'absolute',
+                    top: '-6px',
+                    right: '-6px',
+                    background: '#ef4444',
+                    color: 'white',
+                    fontSize: '10px',
+                    fontWeight: 'bold',
+                    borderRadius: '50%',
+                    width: '16px',
+                    height: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    {pendingData.pagination.total > 99 ? '99+' : pendingData.pagination.total}
+                  </span>
+                </div>
+                <span>Pending Leave Requests</span>
+              </div>
+            )}
+
+            {canApplyForOthers && (
+              <div className="employee-select-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <label style={{ fontWeight: 500, color: '#4b5563' }}>Applying for:</label>
+                <select
+                  className="form-control"
+                  style={{ width: '250px' }}
+                  value={selectedEmployeeId || ''}
+                  onChange={(e) => setSelectedEmployeeId(e.target.value ? Number(e.target.value) : null)}
+                >
+                  <option value="">Myself</option>
+                  {allEmployees
+                    .filter((emp: any) =>
+                      ['intern', 'employee', 'manager', 'hr'].includes(emp.role) &&
+                      emp.id !== user?.id
+                    )
+                    .map((emp: any) => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.name} ({emp.empId || emp.emp_id})
+                      </option>
+                    ))}
+                </select>
+              </div>
+            )}
+          </div>
         </div>
         {/* Top Row: Three Equal Sections */}
         <div className="top-sections-row">

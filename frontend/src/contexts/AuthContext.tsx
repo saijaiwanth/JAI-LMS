@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useQueryClient } from 'react-query';
 import { User } from '../services/authService';
 import * as authService from '../services/authService';
 
@@ -19,10 +20,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState<boolean>(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
+  const queryClient = useQueryClient();
+
   const forceLogout = () => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
+    queryClient.clear();
     setUser(null);
   };
 

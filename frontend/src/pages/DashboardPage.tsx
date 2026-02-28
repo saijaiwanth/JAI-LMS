@@ -7,6 +7,7 @@ import * as leaveService from '../services/leaveService';
 import { useAuth } from '../contexts/AuthContext';
 import LeaveDetailsModal from '../components/LeaveDetailsModal';
 import { format } from 'date-fns';
+import { Bell } from 'lucide-react';
 import './DashboardPage.css';
 import {
     ResponsiveContainer,
@@ -57,6 +58,17 @@ const DashboardPage: React.FC = () => {
         refetchOnWindowFocus: false,
         staleTime: 30000
     });
+
+    // Fetch pending requests for notification badge
+    const { data: pendingData } = useQuery(
+        ['pendingLeavesDashboard', user?.role],
+        () => leaveService.getPendingLeaveRequests(1, 1, undefined, undefined), // limit to 1 just to get total count
+        {
+            staleTime: 60000,
+            refetchInterval: 60000,
+            enabled: !!user && (user.role === 'hr' || user.role === 'super_admin' || user.role === 'manager'),
+        }
+    );
 
     const stats = statsData?.breakdown || {};
     const weeklyTime = analyticsData?.weeklyTime || [];
@@ -113,10 +125,54 @@ const DashboardPage: React.FC = () => {
     return (
         <AppLayout>
             <div className="dashboard-container">
-                <div className="dashboard-header">
+                <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                        <h1 className="page-title">Organization Dashboard</h1>
+                        <h1 className="page-title" style={{ marginBottom: 0 }}>Organization Dashboard</h1>
                     </div>
+                    {pendingData?.pagination?.total > 0 && (
+                        <div
+                            className="pending-notification-badge"
+                            onClick={() => navigate('/leave-approval')}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                background: '#fff',
+                                padding: '8px 16px',
+                                borderRadius: '20px',
+                                cursor: 'pointer',
+                                border: '1px solid #d1d5db',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                                transition: 'all 0.2s',
+                                color: '#4b5563',
+                                fontWeight: '500'
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                            onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                        >
+                            <div style={{ position: 'relative' }}>
+                                <Bell size={20} color="#3c6ff2" />
+                                <span style={{
+                                    position: 'absolute',
+                                    top: '-6px',
+                                    right: '-6px',
+                                    background: '#ef4444',
+                                    color: 'white',
+                                    fontSize: '10px',
+                                    fontWeight: 'bold',
+                                    borderRadius: '50%',
+                                    width: '16px',
+                                    height: '16px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                    {pendingData.pagination.total > 99 ? '99+' : pendingData.pagination.total}
+                                </span>
+                            </div>
+                            <span>Pending Leave Requests</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Stats Row */}
