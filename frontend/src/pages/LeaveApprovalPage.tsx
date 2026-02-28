@@ -1133,6 +1133,13 @@ const LeaveApprovalPage: React.FC = () => {
             handleEditApprovedLeave(selectedRequest.id);
           }
         }}
+        onSuccess={() => {
+          queryClient.invalidateQueries(['pendingLeaves']);
+          queryClient.invalidateQueries(['approvedLeaves']);
+          setIsModalOpen(false);
+          setSelectedRequest(null);
+          setIsEditMode(false);
+        }}
       />
     </>
   );

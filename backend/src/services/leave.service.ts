@@ -53,10 +53,10 @@ export const getLeaveBalances = async (userId: number): Promise<any> => {
   if (result.rows.length === 0) {
     logger.info(`[LEAVE] [GET LEAVE BALANCES] No balance record found, initializing with defaults`);
     await pool.query(
-      'INSERT INTO leave_balances (employee_id, casual_balance, sick_balance, lop_balance, created_by, updated_by) VALUES ($1, 0, 0, 10, $2, $2)',
+      'INSERT INTO leave_balances (employee_id, casual_balance, sick_balance, lop_balance, created_by, updated_by) VALUES ($1, 0, 0, 40, $2, $2)',
       [userId, userId]
     );
-    balancesRaw = { casual: 0, sick: 0, lop: 10 };
+    balancesRaw = { casual: 0, sick: 0, lop: 40 };
   } else {
     const balance = result.rows[0];
     balancesRaw = {
@@ -609,7 +609,7 @@ export const applyLeave = async (
       if (leaveData.leaveType !== 'permission') {
         const balanceColumn = leaveData.leaveType === 'casual' ? 'casual_balance' : leaveData.leaveType === 'sick' ? 'sick_balance' : 'lop_balance';
         try {
-          await client.query(`UPDATE leave_balances SET ${balanceColumn} = ${balanceColumn} - $1 WHERE employee_id = $2`, [days, userId]);
+          await client.query(`UPDATE leave_balances SET ${balanceColumn} = GREATEST(0, ${balanceColumn} - $1) WHERE employee_id = $2`, [days, userId]);
         } catch (err: any) {
           if (err.code === '23514' || (err.message && err.message.includes('check_'))) {
             if (err.constraint === 'check_casual_non_negative' || (err.message && err.message.includes('check_casual_non_negative'))) {
@@ -1635,19 +1635,19 @@ export const deleteLeaveRequest = async (requestId: number, userId: number, user
           const currentLop = parseFloat(currentBalanceResult.rows[0]?.lop_balance || '0') || 0;
           const newLopBalance = currentLop + daysToRefund;
 
-          if (newLopBalance > 10) {
-            const cappedRefund = 10 - currentLop;
+          if (newLopBalance > 40) {
+            const cappedRefund = 40 - currentLop;
             if (cappedRefund > 0) {
               await client.query(
-                `UPDATE leave_balances SET lop_balance = 10 WHERE employee_id = $1`,
+                `UPDATE leave_balances SET lop_balance = 40 WHERE employee_id = $1`,
                 [employeeId]
               );
               logger.warn(
-                `[DELETE LEAVE REQUEST] LOP balance would exceed 10. Current: ${currentLop}, Refunding: ${daysToRefund}, Would be: ${newLopBalance}. Capped at 10 (refunded ${cappedRefund} instead of ${daysToRefund}).`
+                `[DELETE LEAVE REQUEST] LOP balance would exceed 40. Current: ${currentLop}, Refunding: ${daysToRefund}, Would be: ${newLopBalance}. Capped at 40 (refunded ${cappedRefund} instead of ${daysToRefund}).`
               );
             } else {
               logger.warn(
-                `[DELETE LEAVE REQUEST] LOP balance already at or above 10. Current: ${currentLop}. Cannot refund ${daysToRefund} days.`
+                `[DELETE LEAVE REQUEST] LOP balance already at or above 40. Current: ${currentLop}. Cannot refund ${daysToRefund} days.`
               );
             }
           } else {
@@ -2361,11 +2361,11 @@ export const rejectLeave = async (
         const currentLop = parseFloat(currentBalanceResult.rows[0]?.lop_balance || '0') || 0;
         let newLopBalance = currentLop + refundDays;
 
-        if (newLopBalance > 10) {
-          const cappedRefund = 10 - currentLop;
+        if (newLopBalance > 40) {
+          const cappedRefund = 40 - currentLop;
           if (cappedRefund > 0) {
             await client.query(
-              `UPDATE leave_balances SET lop_balance = 10 WHERE employee_id = $1`,
+              `UPDATE leave_balances SET lop_balance = 40 WHERE employee_id = $1`,
               [leave.employee_id]
             );
           }
@@ -2943,26 +2943,27 @@ export const approveLeaveDays = async (
             const currentLop = parseFloat(currentBalanceResult.rows[0]?.lop_balance || '0') || 0;
             let newLopBalance = currentLop + refundAmount;
 
-            if (newLopBalance > 10) {
-              const cappedRefund = 10 - currentLop;
+            if (newLopBalance > 40) {
+              const cappedRefund = 40 - currentLop;
               if (cappedRefund > 0) {
                 await client.query(
-                  `UPDATE leave_balances SET lop_balance = 10 WHERE employee_id = $1`,
+                  `UPDATE leave_balances SET lop_balance = 40 WHERE employee_id = $1`,
                   [leave.employee_id]
                 );
                 logger.warn(
-                  `[APPROVE LEAVE DAYS] Auto-reject LOP balance capped at 10. Refunded ${cappedRefund} instead of ${refundAmount}.`
+                  `[APPROVE LEAVE DAYS] Auto-reject LOP balance capped at 40. Refunded ${cappedRefund} instead of ${refundAmount}.`
                 );
               }
             } else {
+              // Ensure balance stays between 0-40 and doesn't go negative if corrupt
               await client.query(
-                `UPDATE leave_balances SET lop_balance = lop_balance + $1 WHERE employee_id = $2`,
+                `UPDATE leave_balances SET lop_balance = LEAST(40, GREATEST(0, lop_balance + $1)) WHERE employee_id = $2`,
                 [refundAmount, leave.employee_id]
               );
             }
           } else {
             await client.query(
-              `UPDATE leave_balances SET ${balanceColumn} = ${balanceColumn} + $1 WHERE employee_id = $2`,
+              `UPDATE leave_balances SET ${balanceColumn} = GREATEST(0, ${balanceColumn} + $1) WHERE employee_id = $2`,
               [refundAmount, leave.employee_id]
             );
           }
@@ -3283,11 +3284,11 @@ export const rejectLeaveDay = async (
           const currentLop = parseFloat(currentBalanceResult.rows[0]?.lop_balance || '0') || 0;
           let newLopBalance = currentLop + refund;
 
-          if (newLopBalance > 10) {
-            const cappedRefund = 10 - currentLop;
+          if (newLopBalance > 40) {
+            const cappedRefund = 40 - currentLop;
             if (cappedRefund > 0) {
               await client.query(
-                `UPDATE leave_balances SET lop_balance = 10 WHERE employee_id = $1`,
+                `UPDATE leave_balances SET lop_balance = 40 WHERE employee_id = $1`,
                 [leave.employee_id]
               );
             }
@@ -3588,11 +3589,11 @@ export const rejectLeaveDays = async (
           const currentLop = parseFloat(currentBalanceResult.rows[0]?.lop_balance || '0') || 0;
           let newLopBalance = currentLop + totalRefund;
 
-          if (newLopBalance > 10) {
-            const cappedRefund = 10 - currentLop;
+          if (newLopBalance > 40) {
+            const cappedRefund = 40 - currentLop;
             if (cappedRefund > 0) {
               await client.query(
-                `UPDATE leave_balances SET lop_balance = 10 WHERE employee_id = $1`,
+                `UPDATE leave_balances SET lop_balance = 40 WHERE employee_id = $1`,
                 [leave.employee_id]
               );
             }
@@ -3848,8 +3849,8 @@ export const updateLeaveStatus = async (
           const currentLop = parseFloat(currentBalanceResult.rows[0]?.lop_balance || '0') || 0;
           let newLopBalance = currentLop + refundAmount;
 
-          // Cap LOP balance at 10
-          if (newLopBalance > 10) newLopBalance = 10;
+          // Cap LOP balance at 40
+          if (newLopBalance > 40) newLopBalance = 40;
           // Don't allow LOP balance to go below 0 (shouldn't happen with valid requests, but safe)
           if (newLopBalance < 0) newLopBalance = 0;
 
@@ -3858,9 +3859,10 @@ export const updateLeaveStatus = async (
             [newLopBalance, leave.employee_id]
           );
         } else {
-          // For Casual/Sick, we just apply the adjustment
+          // For Casual/Sick/LOP in some logic, we apply the adjustment
+          // Use GREATEST(0, ...) to ensure balance never goes negative
           await client.query(
-            `UPDATE leave_balances SET ${balanceColumn} = ${balanceColumn} + $1 WHERE employee_id = $2`,
+            `UPDATE leave_balances SET ${balanceColumn} = GREATEST(0, ${balanceColumn} + $1) WHERE employee_id = $2`,
             [refundAmount, leave.employee_id]
           );
         }
@@ -4405,17 +4407,15 @@ export const convertLeaveRequestLopToCasual = async (requestId: number, adminUse
       throw new Error('Only LOP leave requests can be converted to Casual leave');
     }
 
-    // 3. Validate proof exists (doctor_note is not null)
-    if (!request.doctor_note) {
-      throw new Error('No proof attached. Conversion from LOP to Casual requires an uploaded document.');
-    }
+    // 3. (Optional validation removed: Conversion from LOP to Casual no longer requires proof for HR/Super Admin)
+
 
     const employeeId = request.employee_id;
 
-    // Calculate days from leave_days table
+    // Calculate days from leave_days table - only for days that are NOT rejected
     const daysResult = await client.query(
       `SELECT COALESCE(SUM(CASE WHEN day_type = 'half' THEN 0.5 ELSE 1 END), 0) as total_days
-         FROM leave_days WHERE leave_request_id = $1`,
+         FROM leave_days WHERE leave_request_id = $1 AND COALESCE(day_status, 'pending') != 'rejected'`,
       [requestId]
     );
     const noOfDays = parseFloat(daysResult.rows[0].total_days) || 0;
@@ -4434,22 +4434,37 @@ export const convertLeaveRequestLopToCasual = async (requestId: number, adminUse
     const previousLopBalance = parseFloat(balanceResult.rows[0].lop_balance) || 0;
 
     if (previousCasualBalance < noOfDays) {
+      logger.warn(`[SERVICE] [LEAVE] [CONVERT LOP TO CASUAL] Insufficient Casual balance for employee ${employeeId}. Available: ${previousCasualBalance}, Required: ${noOfDays}`);
       throw new Error(`Insufficient Casual leave balance. Available: ${previousCasualBalance}, Required: ${noOfDays}`);
     }
 
     // 5. Perform balance adjustment
     const newCasualBalance = previousCasualBalance - noOfDays;
-    const newLopBalance = previousLopBalance + noOfDays; // Refund LOP
+    let newLopBalance = previousLopBalance + noOfDays; // Refund LOP
 
+    // Cap LOP balance at 40
+    if (newLopBalance > 40) newLopBalance = 40;
+
+    logger.info(`[SERVICE] [LEAVE] [CONVERT LOP TO CASUAL] Updating balances for employee ${employeeId} by ${noOfDays} days:`);
+    logger.info(`  - Casual: ${previousCasualBalance} -> ${newCasualBalance}`);
+    logger.info(`  - LOP: ${previousLopBalance} -> ${newLopBalance}`);
+
+    // Update balances - we use subtraction from previous to ensure it's exact
+    // We also use GREATEST(0, ...) to ensure balances NEVER go negative in case of race conditions
     await client.query(
-      'UPDATE leave_balances SET casual_balance = $1, lop_balance = $2 WHERE employee_id = $3',
-      [newCasualBalance, newLopBalance, employeeId]
+      `UPDATE leave_balances 
+       SET casual_balance = GREATEST(0, casual_balance - $1), 
+           lop_balance = LEAST(40, GREATEST(0, lop_balance + $1)),
+           updated_at = CURRENT_TIMESTAMP, 
+           updated_by = $2 
+       WHERE employee_id = $3`,
+      [noOfDays, adminUserId, employeeId]
     );
 
-    // 6. Update leave request type
+    // 6. Update leave request type and audit info
     await client.query(
-      'UPDATE leave_requests SET leave_type = $1 WHERE id = $2',
-      ['casual', requestId]
+      'UPDATE leave_requests SET leave_type = $1, updated_at = CURRENT_TIMESTAMP, updated_by = $2 WHERE id = $3',
+      ['casual', adminUserId, requestId]
     );
 
     // 7. Update leave days type

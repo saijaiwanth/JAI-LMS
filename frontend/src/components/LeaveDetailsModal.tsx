@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useToast } from '../contexts/ToastContext';
 import { FaTimes, FaCheck, FaTimesCircle, FaPencilAlt } from 'react-icons/fa';
 import { format, parse, eachDayOfInterval } from 'date-fns';
 
@@ -58,6 +59,7 @@ interface LeaveDetailsModalProps {
   isLoading?: boolean;
   isEditMode?: boolean;
   userRole?: string;
+  onSuccess?: () => void;
 }
 
 interface EmployeeLeaveBalances {
@@ -95,12 +97,15 @@ const LeaveDetailsModal: React.FC<LeaveDetailsModalProps> = ({
   isLoading = false,
   isEditMode = false,
   userRole,
+  onSuccess,
 }) => {
+  const { showSuccess, showError } = useToast();
   const [fromDate, setFromDate] = useState<string>('');
   const [toDate, setToDate] = useState<string>('');
   const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [showConvertConfirmDialog, setShowConvertConfirmDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<string>('');
+  const [selectedStatus, setSelectedStatus] = useState<string>(leaveRequest?.currentStatus || '');
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [employeeBalances, setEmployeeBalances] = useState<EmployeeLeaveBalances | null>(null);
   const [loadingBalances, setLoadingBalances] = useState(false);
@@ -147,8 +152,8 @@ const LeaveDetailsModal: React.FC<LeaveDetailsModalProps> = ({
         setSelectedStatus(leaveRequest.currentStatus);
       }
 
-      // Fetch employee leave balances if employee is on notice period and employeeId is available
-      if (leaveRequest.empStatus === 'on_notice' && leaveRequest.employeeId) {
+      // Fetch employee leave balances if HR/Admin is viewing, or if employee is on notice period
+      if ((userRole === 'hr' || userRole === 'super_admin' || leaveRequest.empStatus === 'on_notice') && leaveRequest.employeeId) {
         const fetchEmployeeBalances = async () => {
           setLoadingBalances(true);
           try {
@@ -435,8 +440,8 @@ const LeaveDetailsModal: React.FC<LeaveDetailsModalProps> = ({
                 </div>
               </div>
 
-              {/* Leave Balance Information for On Notice Employees */}
-              {leaveRequest.empStatus === 'on_notice' && (
+              {/* Leave Balance Information for HR/Admin or On Notice Employees */}
+              {(userRole === 'hr' || userRole === 'super_admin' || leaveRequest.empStatus === 'on_notice') && (
                 <div className="leave-detail-item leave-detail-item-full">
                   <label>Leave Balance Information</label>
                   {loadingBalances ? (
@@ -462,6 +467,41 @@ const LeaveDetailsModal: React.FC<LeaveDetailsModalProps> = ({
                       borderRadius: '8px',
                       border: '1px solid #e6e8f0'
                     }}>
+                      {/* Casual Leave */}
+                      <div style={{
+                        padding: '12px',
+                        backgroundColor: '#ffffff',
+                        borderRadius: '6px',
+                        border: '1px solid #dcfce7'
+                      }}>
+                        <div style={{
+                          fontSize: '13px',
+                          fontWeight: 600,
+                          color: '#15803d',
+                          marginBottom: '8px'
+                        }}>Casual Leave</div>
+                        <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>
+                          <span style={{ fontWeight: 500 }}>Balance:</span> {employeeBalances.casual}
+                        </div>
+                        {employeeBalances.policies?.casual && (
+                          <>
+                            <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>
+                              <span style={{ fontWeight: 500 }}>Carry Forward:</span> {employeeBalances.policies.casual.carryForwardLimit}
+                            </div>
+                            {employeeBalances.policies.casual.anniversary3YearBonus > 0 && (
+                              <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>
+                                <span style={{ fontWeight: 500 }}>3-Year Bonus:</span> {employeeBalances.policies.casual.anniversary3YearBonus}
+                              </div>
+                            )}
+                            {employeeBalances.policies.casual.anniversary5YearBonus > 0 && (
+                              <div style={{ fontSize: '12px', color: '#64748b' }}>
+                                <span style={{ fontWeight: 500 }}>5-Year Bonus:</span> {employeeBalances.policies.casual.anniversary5YearBonus}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+
                       {/* Sick Leave */}
                       <div style={{
                         padding: '12px',
@@ -731,7 +771,7 @@ const LeaveDetailsModal: React.FC<LeaveDetailsModalProps> = ({
                             fileUrl = signedUrl;
                           } catch (err) {
                             console.error('Failed to get signed URL:', err);
-                            alert(`Failed to load ${leaveRequest.leaveType === 'sick' ? 'medical certificate' : 'proof'}. Please try again.`);
+                            showError(`Failed to load ${leaveRequest.leaveType === 'sick' ? 'medical certificate' : 'proof'}. Please try again.`);
                             return;
                           }
                         } else if (leaveRequest.doctorNote && leaveRequest.doctorNote.startsWith('data:')) {
@@ -945,22 +985,11 @@ const LeaveDetailsModal: React.FC<LeaveDetailsModalProps> = ({
               </button>
             )}
 
-            {/* Re-implementing LOP to Casual Conversion - ONLY for Super Admin AND if proof exists */}
-            {userRole === 'super_admin' && leaveRequest.leaveType === 'lop' && leaveRequest.doctorNote && (
+            {/* Re-implementing LOP to Casual Conversion - ONLY for HR and Super Admin */}
+            {(userRole === 'hr' || userRole === 'super_admin') && leaveRequest.leaveType === 'lop' && (
               <button
                 className="leave-details-modal-button leave-details-modal-button-convert"
-                onClick={async () => {
-                  if (window.confirm('Are you sure you want to convert this LOP leave to Casual leave? This will refund LOP balance and deduct Casual balance.')) {
-                    try {
-                      await leaveService.convertLeaveRequestLopToCasual(leaveRequest.id);
-                      alert('Leave converted successfully');
-                      onClose(); // Close modal and refresh parent
-                      if (onUpdate) onUpdate(leaveRequest.id, 'casual', [], undefined, undefined); // Trigger refresh
-                    } catch (error: any) {
-                      alert(error.response?.data?.error?.message || 'Failed to convert leave');
-                    }
-                  }
-                }}
+                onClick={() => setShowConvertConfirmDialog(true)}
                 disabled={isLoading}
                 style={{ backgroundColor: '#10b981', color: 'white' }}
               >
@@ -978,7 +1007,7 @@ const LeaveDetailsModal: React.FC<LeaveDetailsModalProps> = ({
                   // For partially approved, need date range
                   if (selectedStatus === 'partially_approved') {
                     if (!fromDate || !toDate) {
-                      alert('Please select a date range for partial approval');
+                      showError('Please select a date range for partial approval');
                       return;
                     }
                     // Get day IDs for selected date range
@@ -1107,6 +1136,61 @@ const LeaveDetailsModal: React.FC<LeaveDetailsModalProps> = ({
                 ) : (
                   'Reject'
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showConvertConfirmDialog && (
+        <div className="reject-reason-dialog-overlay" onClick={() => setShowConvertConfirmDialog(false)}>
+          <div className="reject-reason-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="reject-reason-dialog-header">
+              <h3>Confirm Conversion</h3>
+              <button
+                className="reject-reason-dialog-close"
+                onClick={() => setShowConvertConfirmDialog(false)}
+                disabled={isLoading}
+              >
+                <FaTimes />
+              </button>
+            </div>
+            <div className="reject-reason-dialog-body">
+              <p style={{ fontSize: '15px', lineHeight: '1.5', color: '#203050' }}>
+                Are you sure you want to convert this <strong>LOP leave</strong> to <strong>Casual leave</strong>?
+              </p>
+              <p style={{ marginTop: '10px', fontSize: '14px', color: '#5a6c7d' }}>
+                This action will refund the LOP balance and deduct from the Casual balance. This process cannot be automatically undone.
+              </p>
+            </div>
+            <div className="reject-reason-dialog-footer">
+              <button
+                className="reject-reason-dialog-button reject-reason-dialog-button-cancel"
+                onClick={() => setShowConvertConfirmDialog(false)}
+                disabled={isLoading}
+              >
+                Cancel
+              </button>
+              <button
+                className="reject-reason-dialog-button reject-reason-dialog-button-confirm"
+                style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', border: '1px solid #059669' }}
+                onClick={async () => {
+                  try {
+                    await leaveService.convertLeaveRequestLopToCasual(leaveRequest!.id);
+                    showSuccess('Leave converted successfully');
+                    setShowConvertConfirmDialog(false);
+                    if (onSuccess) {
+                      onSuccess();
+                    } else {
+                      onClose();
+                    }
+                  } catch (error: any) {
+                    showError(error.response?.data?.error?.message || 'Failed to convert leave');
+                  }
+                }}
+                disabled={isLoading}
+              >
+                {isLoading ? <span className="loading-spinner"></span> : 'Confirm Conversion'}
               </button>
             </div>
           </div>

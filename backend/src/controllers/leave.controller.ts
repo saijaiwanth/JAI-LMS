@@ -1143,7 +1143,7 @@ export const updateHoliday = async (req: AuthRequest, res: Response) => {
 };
 /**
  * Convert a leave request from LOP to Casual
- * Only accessible by Super Admin and requires a proof file
+ * Only accessible by HR and Super Admin and no longer requires a proof file
  */
 export const convertLeaveRequestLopToCasual = async (req: AuthRequest, res: Response) => {
   logger.info(`[CONTROLLER] [LEAVE] [CONVERT LOP TO CASUAL] ========== REQUEST RECEIVED ==========`);
@@ -1152,13 +1152,13 @@ export const convertLeaveRequestLopToCasual = async (req: AuthRequest, res: Resp
   try {
     const requestId = parseInt(req.params.id);
 
-    // 1. Verify role is super_admin
-    if (req.user!.role !== 'super_admin') {
+    // 1. Verify role is hr or super_admin
+    if (req.user!.role !== 'hr' && req.user!.role !== 'super_admin') {
       logger.warn(`[CONTROLLER] [LEAVE] [CONVERT LOP TO CASUAL] Unauthorized attempt - User ID: ${req.user!.id}, Role: ${req.user!.role}`);
       return res.status(403).json({
         error: {
           code: 'FORBIDDEN',
-          message: 'Only Super Admins can convert LOP leave to Casual leave'
+          message: 'Only HR and Super Admins can convert LOP leave to Casual leave'
         }
       });
     }
