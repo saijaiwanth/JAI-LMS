@@ -501,10 +501,9 @@ const LeaveApplyPage: React.FC = () => {
     'leaveBalances',
     leaveService.getLeaveBalances,
     {
-      retry: false,
-      staleTime: 0,
-      refetchInterval: 5000, // Reduced to 5 seconds for immediate updates
-      cacheTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+      staleTime: 30000,
+      refetchInterval: 30000,
+      cacheTime: 5 * 60 * 1000,
       onError: (error: any) => {
         if (error.response?.status === 401 || error.response?.status === 403) {
           // Handled globally by api.ts interceptor
@@ -520,10 +519,9 @@ const LeaveApplyPage: React.FC = () => {
     ['holidays', selectedYear],
     () => leaveService.getHolidays(selectedYear),
     {
-      retry: false,
-      staleTime: 0, // Always refetch when year changes
-      refetchInterval: 5000, // Reduced to 5 seconds for immediate updates
-      cacheTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+      staleTime: 60000,
+      refetchInterval: 60000,
+      cacheTime: 24 * 60 * 60 * 1000,
       keepPreviousData: true, // Keep old year's data while fetching new year
       refetchOnMount: true, // Always refetch when component mounts
       refetchOnWindowFocus: false // Don't refetch on window focus
@@ -599,16 +597,15 @@ const LeaveApplyPage: React.FC = () => {
   const { data: rules = [], isLoading: rulesLoading, error: rulesError } = useQuery(
     'leaveRules',
     leaveService.getLeaveRules,
-    { retry: false }
+    { staleTime: 60000 }
   );
   const { data: myRequests, isLoading: requestsLoading, error: requestsError } = useQuery(
     'myLeaveRequests',
     () => leaveService.getMyLeaveRequests(1, 50), // Reduced from 100 to 50 for faster loading
     {
-      retry: false,
-      staleTime: 0,
-      refetchInterval: 5000, // Reduced to 5 seconds for immediate updates
-      cacheTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+      staleTime: 30000,
+      refetchInterval: 30000,
+      cacheTime: 5 * 60 * 1000,
       onError: (error: any) => {
         if (error.response?.status === 401 || error.response?.status === 403) {
           // Handled globally by api.ts interceptor
@@ -1664,7 +1661,7 @@ const LeaveApplyPage: React.FC = () => {
     );
   }
 
-  if (balancesError || holidaysError || rulesError || requestsError) {
+  if ((balancesError && !balances) || (holidaysError && (!holidaysData || holidaysData.length === 0)) || (rulesError && !rules) || (requestsError && !myRequests)) {
     const anyError: any =
       balancesError || holidaysError || rulesError || requestsError;
 

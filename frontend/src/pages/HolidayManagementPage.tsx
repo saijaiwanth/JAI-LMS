@@ -37,10 +37,9 @@ const HolidayManagementPage: React.FC = () => {
         ['holidays', selectedYear],
         () => leaveService.getHolidays(selectedYear),
         {
-            retry: false,
-            staleTime: 0,
-            refetchInterval: 5000, // Reduced to 5 seconds for immediate updates
-            cacheTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+            staleTime: 30000,
+            refetchInterval: 30000,
+            cacheTime: 5 * 60 * 1000,
             keepPreviousData: true, // Keep old data while fetching new
             refetchOnMount: true
         }

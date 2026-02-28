@@ -83,11 +83,10 @@ const LeaveApprovalPage: React.FC = () => {
     ['pendingLeaves', search, filter, user?.role],
     () => leaveService.getPendingLeaveRequests(1, 100, search || undefined, filter || undefined),
     {
-      retry: false,
-      staleTime: 5000, // Cache for 5 seconds to reduce redundant hits
-      refetchInterval: 5000, // Reduced to 5 seconds for immediate updates
-      cacheTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
-      keepPreviousData: true, // Keep old data while fetching new
+      staleTime: 30000,
+      refetchInterval: 30000,
+      cacheTime: 5 * 60 * 1000,
+      keepPreviousData: true,
       onError: (error: any) => {
         if (error.response?.status === 403 || error.response?.status === 401) {
           // Redirect to login if unauthorized
@@ -101,11 +100,10 @@ const LeaveApprovalPage: React.FC = () => {
     ['approvedLeaves', user?.role],
     () => leaveService.getApprovedLeaves(1, 100),
     {
-      retry: false,
-      staleTime: 5000, // Cache for 5 seconds
-      refetchInterval: 5000, // Reduced to 5 seconds for immediate updates
-      cacheTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
-      keepPreviousData: true, // Keep old data while fetching new
+      staleTime: 30000,
+      refetchInterval: 30000,
+      cacheTime: 5 * 60 * 1000,
+      keepPreviousData: true,
       onError: (error: any) => {
         if (error.response?.status === 403 || error.response?.status === 401) {
           // Handled globally by api.ts interceptor
@@ -733,10 +731,11 @@ const LeaveApprovalPage: React.FC = () => {
     );
   }
 
-  if (pendingError || approvedError) {
-    const errorMessage = pendingError?.response?.status === 403 || approvedError?.response?.status === 403
+  if ((pendingError && !pendingData) || (approvedError && !approvedData)) {
+    const anyError: any = pendingError || approvedError;
+    const errorMessage = anyError?.response?.status === 403
       ? 'You do not have permission to view this page'
-      : pendingError?.response?.status === 429 || approvedError?.response?.status === 429
+      : anyError?.response?.status === 429
         ? 'Too many requests. Please try again later.'
         : 'Error loading data. Please try again.';
 

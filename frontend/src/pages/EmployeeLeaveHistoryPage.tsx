@@ -41,7 +41,7 @@ const EmployeeLeaveHistoryPage: React.FC = () => {
         () => leaveService.getEmployeeLeaveBalances(employeeId!),
         {
             enabled: !!employeeId && (employee?.role || employee?.employee?.role) !== 'super_admin',
-            retry: false,
+            staleTime: 30000,
             onError: () => showError('Failed to load leave balances')
         }
     );
@@ -51,7 +51,7 @@ const EmployeeLeaveHistoryPage: React.FC = () => {
         () => leaveService.getEmployeeLeaveRequests(employeeId!, 1, 100),
         {
             enabled: !!employeeId && (employee?.role || employee?.employee?.role) !== 'super_admin',
-            retry: false,
+            staleTime: 30000,
             onError: () => showError('Failed to load leave history')
         }
     );

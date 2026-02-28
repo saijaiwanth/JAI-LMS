@@ -216,7 +216,7 @@ const EmployeeManagementPage: React.FC = () => {
     ['reporting-managers', newEmployee.role, editingEmployeeId, appliedManagerSearch],
     () => getReportingManagers(appliedManagerSearch, newEmployee.role, editingEmployeeId || undefined),
     {
-      retry: false,
+      
       staleTime: 30000,
       cacheTime: 5 * 60 * 1000,
       keepPreviousData: true,
@@ -228,7 +228,7 @@ const EmployeeManagementPage: React.FC = () => {
     ['employee-leave-requests', editingEmployeeId],
     () => leaveService.getEmployeeLeaveRequests(editingEmployeeId!, 1, 100),
     {
-      retry: false,
+      
       staleTime: 10000,
       refetchInterval: 30000,
       cacheTime: 5 * 60 * 1000,
@@ -241,7 +241,7 @@ const EmployeeManagementPage: React.FC = () => {
     ['employee-leave-balances', editingEmployeeId],
     () => leaveService.getEmployeeLeaveBalances(editingEmployeeId!),
     {
-      retry: false,
+      
       staleTime: 10000,
       refetchInterval: 30000,
       cacheTime: 5 * 60 * 1000,
@@ -264,7 +264,6 @@ const EmployeeManagementPage: React.FC = () => {
         sortConfig.direction
       ),
     {
-      retry: false,
       staleTime: 10000,
       refetchInterval: 30000,
       keepPreviousData: true,
@@ -928,7 +927,7 @@ const EmployeeManagementPage: React.FC = () => {
     );
   }
 
-  if (error) {
+  if (error && !employeesData) {
     const errorMessage = error?.response?.status === 403
       ? 'You do not have permission to view this page. HR access required.'
       : error?.response?.status === 429

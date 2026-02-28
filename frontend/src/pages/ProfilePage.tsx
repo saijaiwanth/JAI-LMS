@@ -184,11 +184,10 @@ const ProfilePage: React.FC = () => {
     'profile',
     profileService.getProfile,
     {
-      retry: false,
-      staleTime: 0,
-      refetchInterval: 5000, // Reduced to 5 seconds for immediate updates
-      cacheTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
-      keepPreviousData: true, // Keep old data while fetching new
+      staleTime: 30000,
+      refetchInterval: 30000,
+      cacheTime: 5 * 60 * 1000,
+      keepPreviousData: true,
       onError: (error: any) => {
         if (error.response?.status === 401 || error.response?.status === 403) {
           // Handled globally by api.ts interceptor
@@ -653,7 +652,7 @@ const ProfilePage: React.FC = () => {
     );
   }
 
-  if (error) {
+  if (error && !profile) {
     const errorMessage = error?.response?.status === 429
       ? 'Too many requests. Please try again later.'
       : 'Error loading profile. Please try again.';

@@ -238,7 +238,7 @@ const EmployeeDetailsPage: React.FC = () => {
     ['reporting-managers', employeeData.role, employeeData.id, appliedManagerSearch],
     () => getReportingManagers(appliedManagerSearch, employeeData.role, employeeData.id || undefined),
     {
-      retry: false,
+      staleTime: 30000,
       staleTime: 30000,
       enabled: isEditMode && !!employeeData.role
     }
