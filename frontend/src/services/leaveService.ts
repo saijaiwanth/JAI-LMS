@@ -76,6 +76,7 @@ export interface ApplyLeaveData {
   reason: string;
   timeForPermission?: { start?: string; end?: string };
   doctorNote?: string | File; // Can be File for upload or string for existing key/base64
+  employeeId?: number;
 }
 
 export const getLeaveBalances = async (): Promise<LeaveBalance> => {
@@ -113,6 +114,10 @@ export const applyLeave = async (data: ApplyLeaveData) => {
   if (data.timeForPermission) {
     if (data.timeForPermission.start) formData.append('timeForPermission[start]', data.timeForPermission.start);
     if (data.timeForPermission.end) formData.append('timeForPermission[end]', data.timeForPermission.end);
+  }
+
+  if (data.employeeId) {
+    formData.append('employeeId', data.employeeId.toString());
   }
 
   // Handle doctorNote - if it's a File, append it; if it's a string (existing key/base64), append as is

@@ -15,7 +15,8 @@ export const applyLeaveSchema = z.object({
     timeForPermission: z.object({
       start: z.string().optional(),
       end: z.string().optional()
-    }).optional()
+    }).optional(),
+    employeeId: z.union([z.string(), z.number()]).optional().transform(v => v ? Number(v) : undefined)
   })
 });
 

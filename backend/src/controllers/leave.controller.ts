@@ -214,7 +214,11 @@ export const applyLeave = [
         leaveData.doctorNote = req.body.doctorNote;
       }
 
-      const result = await leaveService.applyLeave(req.user!.id, leaveData);
+      const targetUserId = (req.user!.role === 'hr' || req.user!.role === 'super_admin') && req.body.employeeId
+        ? parseInt(req.body.employeeId, 10)
+        : req.user!.id;
+
+      const result = await leaveService.applyLeave(targetUserId, leaveData);
       logger.info(`[CONTROLLER] [LEAVE] [APPLY LEAVE] Leave applied successfully - Leave Request ID: ${result.leaveRequestId}`);
       res.status(201).json(result);
     } catch (error: any) {

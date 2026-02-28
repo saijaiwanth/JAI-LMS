@@ -80,5 +80,11 @@ export const getEmployeeLeaveBalances = async (employeeId: number) => {
   return response.data;
 };
 
+export const getEmployeeLeaveRequests = async (employeeId: number, page: number = 1, limit: number = 50) => {
+  const params = new URLSearchParams({ page: page.toString(), limit: limit.toString() });
+  const response = await api.get(`/leave/employee/${employeeId}/requests?${params}`);
+  return response.data;
+};
+
 
 

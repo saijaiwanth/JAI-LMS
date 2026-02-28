@@ -17,6 +17,7 @@ import {
 import { Button } from '../components/ui/button';
 import { ChevronDown } from 'lucide-react';
 import * as leaveService from '../services/leaveService';
+import * as employeeService from '../services/employeeService';
 import { format, addDays, eachDayOfInterval } from 'date-fns';
 import { FaTrash, FaEye, FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
 import EmptyState from '../components/common/EmptyState';
@@ -27,6 +28,7 @@ const LeaveApplyPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { showSuccess, showError, showWarning } = useToast();
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(null);
   const [editingRequestId, setEditingRequestId] = useState<number | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteRequestId, setDeleteRequestId] = useState<number | null>(null);
@@ -498,8 +500,8 @@ const LeaveApplyPage: React.FC = () => {
   }, [formData.timeForPermission.start, formData.leaveType]);
 
   const { data: balances, isLoading: balancesLoading, error: balancesError } = useQuery(
-    'leaveBalances',
-    leaveService.getLeaveBalances,
+    ['leaveBalances', selectedEmployeeId],
+    () => selectedEmployeeId ? employeeService.getEmployeeLeaveBalances(selectedEmployeeId) : leaveService.getLeaveBalances(),
     {
       staleTime: 30000,
       refetchInterval: 30000,
@@ -594,14 +596,27 @@ const LeaveApplyPage: React.FC = () => {
       }));
     }
   }, [editingId, deleteRequestId, viewModalOpen, holidaysLoading, user, getNextWorkingDate]); // Run once holidays are loaded
+  const canApplyForOthers = user?.role === 'hr' || user?.role === 'super_admin';
+
+  const { data: allEmployees = [] } = useQuery(
+    'allEmployeesApplyLeave',
+    () => employeeService.getEmployees(1, 1000).then((res: any) => res.employees),
+    {
+      enabled: canApplyForOthers,
+      staleTime: 60000
+    }
+  );
+
   const { data: rules = [], isLoading: rulesLoading, error: rulesError } = useQuery(
     'leaveRules',
     leaveService.getLeaveRules,
     { staleTime: 60000 }
   );
   const { data: myRequests, isLoading: requestsLoading, error: requestsError } = useQuery(
-    'myLeaveRequests',
-    () => leaveService.getMyLeaveRequests(1, 50), // Reduced from 100 to 50 for faster loading
+    ['myLeaveRequests', selectedEmployeeId],
+    () => selectedEmployeeId
+      ? employeeService.getEmployeeLeaveRequests(selectedEmployeeId, 1, 50)
+      : leaveService.getMyLeaveRequests(1, 50),
     {
       staleTime: 30000,
       refetchInterval: 30000,
@@ -819,16 +834,16 @@ const LeaveApplyPage: React.FC = () => {
     {
       onMutate: async (variables) => {
         // Cancel outgoing refetches
-        await queryClient.cancelQueries('myLeaveRequests');
-        await queryClient.cancelQueries('leaveBalances');
+        await queryClient.cancelQueries(['myLeaveRequests', selectedEmployeeId]);
+        await queryClient.cancelQueries(['leaveBalances', selectedEmployeeId]);
 
         // Snapshot previous values for rollback
-        const previousRequests = queryClient.getQueryData('myLeaveRequests');
-        const previousBalances = queryClient.getQueryData('leaveBalances');
+        const previousRequests = queryClient.getQueryData(['myLeaveRequests', selectedEmployeeId]);
+        const previousBalances = queryClient.getQueryData(['leaveBalances', selectedEmployeeId]);
 
         // Optimistically update 'leaveBalances'
         if (!variables.id && variables.data.leaveType !== 'permission' && previousBalances) {
-          queryClient.setQueryData('leaveBalances', (old: any) => {
+          queryClient.setQueryData(['leaveBalances', selectedEmployeeId], (old: any) => {
             if (!old) return old;
             // Map leaveType to balance key
             const balanceKey = variables.data.leaveType === 'casual' ? 'casual' :
@@ -842,7 +857,7 @@ const LeaveApplyPage: React.FC = () => {
         }
 
         // Optimistically update 'myLeaveRequests' list
-        queryClient.setQueryData('myLeaveRequests', (old: any) => {
+        queryClient.setQueryData(['myLeaveRequests', selectedEmployeeId], (old: any) => {
           if (!old) return { requests: [], pagination: { total: 0, page: 1, limit: 10 } };
           const requests = [...(old.requests || [])];
 
@@ -892,7 +907,7 @@ const LeaveApplyPage: React.FC = () => {
       },
       onSuccess: (response, variables) => {
         // Replace optimistic record with real one or update existing
-        queryClient.setQueryData('myLeaveRequests', (old: any) => {
+        queryClient.setQueryData(['myLeaveRequests', selectedEmployeeId], (old: any) => {
           if (!old?.requests) return old;
           let requests = [...old.requests];
 
@@ -918,8 +933,8 @@ const LeaveApplyPage: React.FC = () => {
         });
 
         // Invalidate queries in background (non-blocking) for fresh data
-        queryClient.invalidateQueries('leaveBalances');
-        queryClient.invalidateQueries('myLeaveRequests');
+        queryClient.invalidateQueries(['leaveBalances', selectedEmployeeId]);
+        queryClient.invalidateQueries(['myLeaveRequests', selectedEmployeeId]);
 
         showSuccess(variables.id ? 'Leave Updated Successfully!' : 'Leave Applied Successfully!');
         setFormData({
@@ -938,10 +953,10 @@ const LeaveApplyPage: React.FC = () => {
       onError: (error: any, _, context) => {
         // Rollback on error
         if (context?.previousRequests) {
-          queryClient.setQueryData('myLeaveRequests', context.previousRequests);
+          queryClient.setQueryData(['myLeaveRequests', selectedEmployeeId], context.previousRequests);
         }
         if (context?.previousBalances) {
-          queryClient.setQueryData('leaveBalances', context.previousBalances);
+          queryClient.setQueryData(['leaveBalances', selectedEmployeeId], context.previousBalances);
         }
 
         const errorMessage = error.response?.data?.error?.message || error.message || 'Failed to apply leave';
@@ -978,11 +993,11 @@ const LeaveApplyPage: React.FC = () => {
 
   const deleteMutation = useMutation(leaveService.deleteLeaveRequest, {
     onMutate: async (requestId) => {
-      await queryClient.cancelQueries('myLeaveRequests');
-      const previousRequests = queryClient.getQueryData('myLeaveRequests');
+      await queryClient.cancelQueries(['myLeaveRequests', selectedEmployeeId]);
+      const previousRequests = queryClient.getQueryData(['myLeaveRequests', selectedEmployeeId]);
 
       // Optimistically remove from list
-      queryClient.setQueryData('myLeaveRequests', (old: any) => {
+      queryClient.setQueryData(['myLeaveRequests', selectedEmployeeId], (old: any) => {
         if (!old?.requests) return old;
         return {
           ...old,
@@ -994,8 +1009,8 @@ const LeaveApplyPage: React.FC = () => {
     },
     onSuccess: () => {
       // Invalidate in background for fresh data
-      queryClient.invalidateQueries('leaveBalances');
-      queryClient.invalidateQueries('myLeaveRequests');
+      queryClient.invalidateQueries(['leaveBalances', selectedEmployeeId]);
+      queryClient.invalidateQueries(['myLeaveRequests', selectedEmployeeId]);
       showSuccess('Leave Deleted successfully!');
       // Reset form after a delete (especially if we were editing)
       setFormData({
@@ -1015,7 +1030,7 @@ const LeaveApplyPage: React.FC = () => {
     onError: (error: any, _, context) => {
       // Rollback on error
       if (context?.previousRequests) {
-        queryClient.setQueryData('myLeaveRequests', context.previousRequests);
+        queryClient.setQueryData(['myLeaveRequests', selectedEmployeeId], context.previousRequests);
       }
       showError(error.response?.data?.error?.message || 'Failed to delete leave');
       setDeleteConfirmOpen(false);
@@ -1394,6 +1409,10 @@ const LeaveApplyPage: React.FC = () => {
       reason: formData.reason
     };
 
+    if (canApplyForOthers && selectedEmployeeId) {
+      submitData.employeeId = selectedEmployeeId;
+    }
+
     // For permission, timeForPermission is required
     if (formData.leaveType === 'permission') {
       if (!formData.timeForPermission.start || !formData.timeForPermission.end) {
@@ -1717,12 +1736,38 @@ const LeaveApplyPage: React.FC = () => {
   return (
     <AppLayout>
       <div className="leave-apply-page">
-        <h2 className="page-title">
-          Welcome, {user?.name || ''}
-          {user?.status === 'on_notice' && (
-            <span className="status-badge status-on-notice">On Notice</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+          <h2 className="page-title" style={{ marginBottom: 0 }}>
+            Welcome, {user?.name || ''}
+            {user?.status === 'on_notice' && (
+              <span className="status-badge status-on-notice">On Notice</span>
+            )}
+          </h2>
+
+          {canApplyForOthers && (
+            <div className="employee-select-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingRight: '20px' }}>
+              <label style={{ fontWeight: 500, color: '#4b5563' }}>Applying for:</label>
+              <select
+                className="form-control"
+                style={{ width: '250px' }}
+                value={selectedEmployeeId || ''}
+                onChange={(e) => setSelectedEmployeeId(e.target.value ? Number(e.target.value) : null)}
+              >
+                <option value="">Myself</option>
+                {allEmployees
+                  .filter((emp: any) =>
+                    ['intern', 'employee', 'manager', 'hr'].includes(emp.role) &&
+                    emp.id !== user?.id
+                  )
+                  .map((emp: any) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.name} ({emp.empId || emp.emp_id})
+                    </option>
+                  ))}
+              </select>
+            </div>
           )}
-        </h2>
+        </div>
         {/* Top Row: Three Equal Sections */}
         <div className="top-sections-row">
           {/* Leave Balances - Top Left */}
