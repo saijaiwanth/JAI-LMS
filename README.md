@@ -40,6 +40,7 @@ The ultimate system authority with complete control.
 - **User Management** - Create and manage HR and Admin roles
 - **Security Oversight** - Monitor audit logs and system security
 - **Full Timesheet Access** - View and manage all employee timesheets
+- **Proxy Leave Application** - Apply for leaves on behalf of any employee
 
 ### **💼 Human Resources (HR)**
 Primary operators of the personnel database.
@@ -49,6 +50,7 @@ Primary operators of the personnel database.
 - **Organizational Structure** - Manage reporting lines and hierarchy
 - **Timesheet Oversight** - View and approve team timesheets
 - **Report Generation** - Generate comprehensive HR reports
+- **Proxy Leave Application** - Apply for leaves on behalf of employees using the unified Leave Apply module
 
 ### **👔 Manager**
 Team leaders with approval authority.
@@ -57,6 +59,7 @@ Team leaders with approval authority.
 - **Timesheet Approvals** - Review and approve team work hours
 - **Team Reports** - Generate reports for direct reportees
 - **Availability Monitoring** - Track team availability for planning
+- **Actionable Notifications** - View direct reports' pending leave counts via unified smart badges
 
 ### **👤 Employee / Intern**
 Self-service users with personal management tools.
@@ -268,7 +271,9 @@ When a Manager's status changes to Resigned/Inactive/Terminated:
 - **Smart Forms**: Auto-validation and helpful error messages
 - **Real-time Updates**: Instant feedback on all actions
 - **Searchable Dropdowns**: Quick filtering in all selects
+- **Smart Notification Badges**: Live action counters on dashboards and apply pages (HR, Admin, Managers)
 - **Loading States**: Clear indicators for async operations
+- **Secure Sandbox Caching**: Seamless cache wiping on account swaps/logouts
 - **Toast Notifications**: Non-intrusive success/error messages
 
 ---
@@ -327,5 +332,5 @@ For technical support or feature requests, contact the TensorGo Dev Team.
 
 *Built with ❤️ by the TensorGo Development Team*
 
-**Version**: 2.0  
-**Last Updated**: January 2026
+**Version**: 2.1  
+**Last Updated**: February 2026
