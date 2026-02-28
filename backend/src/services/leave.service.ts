@@ -373,7 +373,13 @@ export const applyLeave = async (
       if (daysDifference > 1) {
         throw new Error('For future dates, sick leave can only be applied for tomorrow (next day). You can apply for past dates (up to 3 days) or tomorrow only.');
       }
-    } else if (leaveData.leaveType === 'lop' || leaveData.leaveType === 'permission') {
+    } else if (leaveData.leaveType === 'lop') {
+      const msPerDay = 1000 * 60 * 60 * 24;
+      const daysDifference = Math.floor((startDate.getTime() - today.getTime()) / msPerDay);
+      if (daysDifference < -10) {
+        throw new Error('Cannot apply LOP leave for dates more than 10 days in the past.');
+      }
+    } else if (leaveData.leaveType === 'permission') {
       if (startDate < today) {
         throw new Error('Cannot apply for past dates.');
       }
@@ -1184,8 +1190,14 @@ export const updateLeaveRequest = async (
     }
     // daysDifference === 1 is allowed (tomorrow only)
     // daysDifference between -3 and 0 is allowed (past 3 days + today)
-  } else if (leaveData.leaveType === 'lop' || leaveData.leaveType === 'permission') {
-    // LOP/Permission: today is allowed, but not past dates
+  } else if (leaveData.leaveType === 'lop') {
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const daysDifference = Math.floor((startDate.getTime() - today.getTime()) / msPerDay);
+    if (daysDifference < -10) {
+      throw new Error('Cannot apply LOP leave for dates more than 10 days in the past.');
+    }
+  } else if (leaveData.leaveType === 'permission') {
+    // Permission: today is allowed, but not past dates
     if (startDate < today) {
       throw new Error('Cannot apply for past dates.');
     }

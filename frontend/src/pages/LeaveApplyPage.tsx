@@ -63,11 +63,11 @@ const LeaveApplyPage: React.FC = () => {
   const minStartDate = formData.leaveType === 'casual'
     ? format(addDays(new Date(), 3), 'yyyy-MM-dd') // block today + next two days for casual
     : formData.leaveType === 'sick'
-      ? format(addDays(new Date(), -1), 'yyyy-MM-dd') // allow past 1 day for sick leave
+      ? format(addDays(new Date(), -3), 'yyyy-MM-dd') // allow past 3 days for sick leave (aligned with backend)
       : formData.leaveType === 'permission'
-        ? format(addDays(new Date(), 1), 'yyyy-MM-dd') // Permission can only be applied from tomorrow
+        ? todayStr // Permission is allowed starting from today
         : formData.leaveType === 'lop'
-          ? format(addDays(new Date(), -2), 'yyyy-MM-dd') // LOP can be applied for past two days
+          ? format(addDays(new Date(), -10), 'yyyy-MM-dd') // LOP can be applied for past ten days
           : todayStr;
 
   // For sick leave: max date is tomorrow (only allow tomorrow for future dates)
@@ -1094,6 +1094,34 @@ const LeaveApplyPage: React.FC = () => {
         }
         if (endDaysDifference > 1) {
           showWarning('For future dates, sick leave end date can only be tomorrow (next day). You can apply for past dates (up to 3 days) or tomorrow only.');
+          return;
+        }
+      }
+    } else if (formData.leaveType === 'lop') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const oneDayMs = 1000 * 60 * 60 * 24;
+
+      if (formData.startDate) {
+        const startDate = new Date(formData.startDate + 'T12:00:00');
+        startDate.setHours(0, 0, 0, 0);
+        const daysDifference = Math.floor((startDate.getTime() - today.getTime()) / oneDayMs);
+
+        if (daysDifference < -10) {
+          showWarning('Cannot apply LOP leave for dates more than 10 days in the past.');
+          return;
+        }
+      }
+    } else if (formData.leaveType === 'permission') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (formData.startDate) {
+        const startDate = new Date(formData.startDate + 'T12:00:00');
+        startDate.setHours(0, 0, 0, 0);
+
+        if (startDate < today) {
+          showWarning('Cannot apply for past dates for Permission.');
           return;
         }
       }
