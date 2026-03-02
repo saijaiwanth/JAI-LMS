@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
 import { Button } from '../components/ui/button';
-import { ChevronDown, Bell } from 'lucide-react';
+import { ChevronDown, Bell, Search, SortAsc, SortDesc, X } from 'lucide-react';
 import * as leaveService from '../services/leaveService';
 import * as employeeService from '../services/employeeService';
 import { format, addDays, eachDayOfInterval } from 'date-fns';
@@ -55,6 +55,8 @@ const LeaveApplyPage: React.FC = () => {
     key: 'startDate',
     direction: 'asc'
   });
+  const [employeeSearch, setEmployeeSearch] = useState('');
+  const [employeeSortOrder, setEmployeeSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const handleSort = (key: string) => {
     setSortConfig((prev) => ({
@@ -608,6 +610,29 @@ const LeaveApplyPage: React.FC = () => {
       staleTime: 60000
     }
   );
+
+  const filteredEmployeesForSelection = useMemo(() => {
+    return (allEmployees || [])
+      .filter((emp: any) => {
+        const matchesRole = ['intern', 'employee', 'manager', 'hr'].includes(emp.role);
+        const matchesStatus = ['active', 'on_notice'].includes(emp.status);
+        const isNotSelf = emp.id !== user?.id;
+        const matchesSearch = !employeeSearch ||
+          emp.name.toLowerCase().includes(employeeSearch.toLowerCase()) ||
+          (emp.empId || emp.emp_id || '').toLowerCase().includes(employeeSearch.toLowerCase());
+
+        return matchesRole && matchesStatus && isNotSelf && matchesSearch;
+      })
+      .sort((a: any, b: any) => {
+        const nameA = a.name.toLowerCase();
+        const nameB = b.name.toLowerCase();
+        if (employeeSortOrder === 'asc') {
+          return nameA.localeCompare(nameB);
+        } else {
+          return nameB.localeCompare(nameA);
+        }
+      });
+  }, [allEmployees, employeeSearch, employeeSortOrder, user?.id]);
 
   // Fetch pending requests for notification badge
   const { data: pendingData } = useQuery(
@@ -1804,26 +1829,102 @@ const LeaveApplyPage: React.FC = () => {
             )}
 
             {canApplyForOthers && (
-              <div className="employee-select-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div className="employee-searchable-select" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <label style={{ fontWeight: 500, color: '#4b5563' }}>Applying for:</label>
-                <select
-                  className="form-control"
-                  style={{ width: '250px' }}
-                  value={selectedEmployeeId || ''}
-                  onChange={(e) => setSelectedEmployeeId(e.target.value ? Number(e.target.value) : null)}
-                >
-                  <option value="">Myself</option>
-                  {allEmployees
-                    .filter((emp: any) =>
-                      ['intern', 'employee', 'manager', 'hr'].includes(emp.role) &&
-                      emp.id !== user?.id
-                    )
-                    .map((emp: any) => (
-                      <option key={emp.id} value={emp.id}>
-                        {emp.name} ({emp.empId || emp.emp_id})
-                      </option>
-                    ))}
-                </select>
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="leave-type-dropdown-trigger"
+                      style={{
+                        width: '250px',
+                        justifyContent: 'space-between',
+                        padding: '10px 12px',
+                        fontSize: '13px',
+                        fontFamily: 'Poppins, sans-serif',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        backgroundColor: 'white',
+                        color: '#1f2a3d',
+                        height: '42px',
+                        fontWeight: 500
+                      }}
+                    >
+                      <span className="truncate">
+                        {selectedEmployeeId
+                          ? (allEmployees.find((e: any) => e.id === selectedEmployeeId)?.name || 'Myself')
+                          : 'Myself'}
+                      </span>
+                      <ChevronDown style={{ width: '16px', height: '16px', marginLeft: '8px', opacity: 0.5 }} />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="employee-select-dropdown-content" style={{ width: '300px', padding: 0 }}>
+                    <div className="dropdown-search-header" style={{ padding: '8px', borderBottom: '1px solid #f3f4f6', backgroundColor: '#f9fafb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>Select Employee</span>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setEmployeeSortOrder(prev => prev === 'asc' ? 'desc' : 'asc'); }}
+                        style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '4px', padding: '2px 6px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', color: '#6b7280' }}
+                        title="Sort by name"
+                      >
+                        {employeeSortOrder === 'asc' ? <SortAsc size={12} /> : <SortDesc size={12} />}
+                        <span style={{ fontSize: '10px' }}>Sort</span>
+                      </button>
+                    </div>
+                    <div style={{ padding: '8px', position: 'relative', borderBottom: '1px solid #f3f4f6' }}>
+                      <Search size={14} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
+                      <input
+                        type="text"
+                        placeholder="Search by name..."
+                        value={employeeSearch}
+                        onChange={(e) => setEmployeeSearch(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          width: '100%',
+                          padding: '8px 30px 8px 32px',
+                          fontSize: '13px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '6px',
+                          outline: 'none'
+                        }}
+                      />
+                      {employeeSearch && (
+                        <X
+                          size={14}
+                          style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', cursor: 'pointer' }}
+                          onClick={(e) => { e.stopPropagation(); setEmployeeSearch(''); }}
+                        />
+                      )}
+                    </div>
+                    <div className="employee-dropdown-scroll" style={{ maxHeight: '250px', overflowY: 'auto', padding: '4px' }}>
+                      <DropdownMenuItem
+                        onClick={() => setSelectedEmployeeId(null)}
+                        style={{ padding: '8px 12px', borderRadius: '4px', cursor: 'pointer', backgroundColor: !selectedEmployeeId ? '#f0f7ff' : 'transparent' }}
+                      >
+                        <span style={{ fontWeight: !selectedEmployeeId ? 600 : 400, color: !selectedEmployeeId ? '#3b82f6' : 'inherit' }}>Myself</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      {filteredEmployeesForSelection.length === 0 ? (
+                        <div style={{ padding: '20px 0', textAlign: 'center', color: '#9ca3af', fontSize: '12px' }}>
+                          No matching employees found
+                        </div>
+                      ) : (
+                        filteredEmployeesForSelection.map((emp: any) => (
+                          <DropdownMenuItem
+                            key={emp.id}
+                            onClick={() => setSelectedEmployeeId(emp.id)}
+                            style={{ padding: '8px 12px', borderRadius: '4px', cursor: 'pointer', marginBottom: '2px', backgroundColor: selectedEmployeeId === emp.id ? '#f0f7ff' : 'transparent' }}
+                          >
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                              <span style={{ fontSize: '13px', fontWeight: selectedEmployeeId === emp.id ? 600 : 500, color: selectedEmployeeId === emp.id ? '#3b82f6' : '#374151' }}>{emp.name}</span>
+                              <span style={{ fontSize: '10px', color: '#6b7280' }}>ID: {emp.empId || emp.emp_id} • {emp.role.toUpperCase()}</span>
+                            </div>
+                          </DropdownMenuItem>
+                        ))
+                      )}
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             )}
           </div>

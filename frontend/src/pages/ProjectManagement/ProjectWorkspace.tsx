@@ -187,13 +187,16 @@ export const ProjectWorkspace: React.FC = () => {
     // PM-level access: assigned PM OR HR OR Super Admin
     const isPM = isProjectManager || isSuperAdmin || isHR;
 
-    const canManageProject = isPM && !isProjectReadOnly;
+    // Permissions: Project metadata and status can always be managed by PM/Admin/HR
+    const canManageProject = isPM;
+    const canManageStatus = isPM;
+
+    // Resource management (modules/tasks) is blocked if the project is not active
     const canManageResources = isPM && !isProjectReadOnly;
     const canCreateModule = canManageResources;
 
     const hasModuleAccess = modules?.find(m => m.id === selectedModuleId)?.assigned_users?.some(u => u.id === user?.id);
     const canAddTask = (canManageResources || hasModuleAccess) && !isProjectReadOnly;
-    const canManageStatus = isPM && !isProjectReadOnly;
 
     const handleCreate = (type: 'module' | 'task', parentId: number) => {
         if (type === 'module' && !canCreateModule) return;
@@ -251,50 +254,147 @@ export const ProjectWorkspace: React.FC = () => {
                     setSelectedModuleId(null);
                     setSelectedTaskId(null);
                 }
-                refetchModules();
+                queryClient.invalidateQueries(['modules', projectId]);
             } else if (type === 'task') {
                 await projectService.deleteTask(id);
                 showSuccess("Task deleted successfully");
                 if (selectedTaskId === id) setSelectedTaskId(null);
-                refetchTasks();
+                queryClient.invalidateQueries(['tasks', selectedModuleId]);
             }
         } catch (error: any) {
             showError(error.response?.data?.error || `Failed to delete ${type}`);
         }
     };
 
-    const handleCreateSuccess = () => {
+    const handleCreateSuccess = (result: any) => {
         if (createType === ('project' as any)) {
-            refetchProject();
-            refetchModules();
+            queryClient.setQueryData(['project', projectId], (old: any) => ({
+                ...old,
+                ...result
+            }));
+            queryClient.invalidateQueries('projects');
         } else if (createType === 'module') {
-            refetchModules();
+            if (isEdit) {
+                queryClient.setQueryData(['modules', projectId], (old: any[] | undefined) =>
+                    (old || []).map(m => m.id === result.id ? { ...m, ...result } : m)
+                );
+            }
+            queryClient.invalidateQueries(['modules', projectId]);
         } else if (createType === 'task') {
-            refetchTasks();
+            if (isEdit) {
+                queryClient.setQueryData(['tasks', selectedModuleId], (old: any[] | undefined) =>
+                    (old || []).map(t => t.id === result.id ? { ...t, ...result } : t)
+                );
+            }
+            queryClient.invalidateQueries(['tasks', selectedModuleId]);
         }
     };
 
     const assignModuleUserMutation = useMutation(
-        ({ moduleId, userId, action, userObj }: { moduleId: number, userId: number, action: 'add' | 'remove', userObj?: any }) =>
+        ({ moduleId, userId, action }: { moduleId: number, userId: number, action: 'add' | 'remove' }) =>
             projectService.toggleAccess('module', moduleId, userId, action),
         {
-            onSuccess: () => refetchModules()
+            onMutate: async ({ moduleId, userId, action }) => {
+                await queryClient.cancelQueries(['modules', projectId]);
+                const previousModules = queryClient.getQueryData(['modules', projectId]);
+
+                queryClient.setQueryData(['modules', projectId], (old: any[] | undefined) => {
+                    if (!old) return [];
+                    return old.map(m => {
+                        if (m.id !== moduleId) return m;
+
+                        const assigned_users = m.assigned_users || [];
+                        if (action === 'add') {
+                            const userToAdd = allEmployees?.find((u: any) => u.id === userId);
+                            return {
+                                ...m,
+                                assigned_users: [...assigned_users, userToAdd].filter(Boolean)
+                            };
+                        } else {
+                            return {
+                                ...m,
+                                assigned_users: assigned_users.filter((u: any) => u.id !== userId)
+                            };
+                        }
+                    });
+                });
+
+                return { previousModules };
+            },
+            onError: (err, variables, context: any) => {
+                if (context?.previousModules) {
+                    queryClient.setQueryData(['modules', projectId], context.previousModules);
+                }
+                showError("Failed to update module access");
+            },
+            onSettled: () => queryClient.invalidateQueries(['modules', projectId])
         }
     );
 
     const assignTaskUserMutation = useMutation(
-        ({ taskId, userId, action, userObj }: { taskId: number, userId: number, action: 'add' | 'remove', userObj?: any }) =>
+        ({ taskId, userId, action }: { taskId: number, userId: number, action: 'add' | 'remove' }) =>
             projectService.toggleAccess('task', taskId, userId, action),
         {
-            onSuccess: () => refetchTasks()
+            onMutate: async ({ taskId, userId, action }) => {
+                await queryClient.cancelQueries(['tasks', selectedModuleId]);
+                const previousTasks = queryClient.getQueryData(['tasks', selectedModuleId]);
+
+                queryClient.setQueryData(['tasks', selectedModuleId], (old: any[] | undefined) => {
+                    if (!old) return [];
+                    return old.map(t => {
+                        if (t.id !== taskId) return t;
+
+                        const assigned_users = t.assigned_users || [];
+                        if (action === 'add') {
+                            const userToAdd = (allEmployees || []).find((u: any) => u.id === userId);
+                            return {
+                                ...t,
+                                assigned_users: [...assigned_users, userToAdd].filter(Boolean)
+                            };
+                        } else {
+                            return {
+                                ...t,
+                                assigned_users: assigned_users.filter((u: any) => u.id !== userId)
+                            };
+                        }
+                    });
+                });
+
+                return { previousTasks };
+            },
+            onError: (err, variables, context: any) => {
+                if (context?.previousTasks) {
+                    queryClient.setQueryData(['tasks', selectedModuleId], context.previousTasks);
+                }
+                showError("Failed to update task access");
+            },
+            onSettled: () => queryClient.invalidateQueries(['tasks', selectedModuleId])
         }
     );
 
     const updateStatusMutation = useMutation(
         (newStatus: string) => projectService.updateProject(project!.id, { status: newStatus as any }),
         {
-            onSuccess: () => {
-                refetchProject();
+            // Optimistic Update
+            onMutate: async (newStatus) => {
+                await queryClient.cancelQueries(['project', projectId]);
+                const previousProject = queryClient.getQueryData(['project', projectId]);
+
+                queryClient.setQueryData(['project', projectId], (old: any) => ({
+                    ...old,
+                    status: newStatus
+                }));
+
+                return { previousProject };
+            },
+            onError: (err, newStatus, context: any) => {
+                if (context?.previousProject) {
+                    queryClient.setQueryData(['project', projectId], context.previousProject);
+                }
+                showError("Failed to update status");
+            },
+            onSettled: () => {
+                queryClient.invalidateQueries(['project', projectId]);
                 queryClient.invalidateQueries('projects');
             }
         }
@@ -365,7 +465,10 @@ export const ProjectWorkspace: React.FC = () => {
                                     isCompact={true}
                                     createdByName={module.created_by_name}
                                     availableUsers={(allEmployees || [])
-                                        .filter((u: any) => String(u.id) !== String(project?.project_manager_id))
+                                        .filter((u: any) =>
+                                            String(u.id) !== String(project?.project_manager_id) &&
+                                            ['active', 'on_notice'].includes(u.status)
+                                        )
                                         .map((u: any) => ({
                                             ...u,
                                             initials: u.initials || (u.name ? u.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : '??')

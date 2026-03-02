@@ -1,5 +1,5 @@
-import { Edit, Trash2, Plus, X, UserPlus, UserMinus, Info } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { Edit, Trash2, Plus, X, UserPlus, UserMinus, Info, Search, SortAsc, SortDesc } from 'lucide-react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import './WorkspaceCard.css';
 import { DescriptionModal } from './DescriptionModal';
 
@@ -55,9 +55,30 @@ export const WorkspaceCard: React.FC<WorkspaceCardProps> = ({
 }) => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [showInfo, setShowInfo] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const searchInputRef = useRef<HTMLInputElement>(null);
 
     const displayUsers = assignedUsers;
+
+    const filteredAndSortedUsers = useMemo(() => {
+        return [...availableUsers]
+            .filter(user => user.name.toLowerCase().includes(searchTerm.toLowerCase()))
+            .sort((a, b) => {
+                const comparison = a.name.localeCompare(b.name);
+                return sortOrder === 'asc' ? comparison : -comparison;
+            });
+    }, [availableUsers, searchTerm, sortOrder]);
+
+    useEffect(() => {
+        if (isDropdownOpen && searchInputRef.current) {
+            searchInputRef.current.focus();
+        }
+        if (!isDropdownOpen) {
+            setSearchTerm('');
+        }
+    }, [isDropdownOpen]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -215,18 +236,53 @@ export const WorkspaceCard: React.FC<WorkspaceCardProps> = ({
                                 <div className="ws-assign-dropdown" onClick={(e) => e.stopPropagation()}>
                                     <div className="ws-dropdown-header">
                                         <span>Manage Access</span>
+                                        <button
+                                            className="ws-sort-toggle"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                                            }}
+                                            title={`Sort by Name (${sortOrder === 'asc' ? 'A-Z' : 'Z-A'})`}
+                                        >
+                                            {sortOrder === 'asc' ? <SortAsc size={14} /> : <SortDesc size={14} />}
+                                            <span style={{ fontSize: '10px', marginLeft: '4px' }}>Name</span>
+                                        </button>
+                                    </div>
+                                    <div className="ws-dropdown-search">
+                                        <Search size={14} className="ws-search-icon" />
+                                        <input
+                                            ref={searchInputRef}
+                                            type="text"
+                                            placeholder="Search members..."
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            className="ws-search-input"
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                        {searchTerm && (
+                                            <button
+                                                className="ws-search-clear"
+                                                onClick={(e) => { e.stopPropagation(); setSearchTerm(''); }}
+                                            >
+                                                <X size={12} />
+                                            </button>
+                                        )}
                                     </div>
                                     <div className="ws-dropdown-list">
-                                        {availableUsers.length === 0 ? (
+                                        {filteredAndSortedUsers.length === 0 ? (
                                             <div className="ws-dropdown-empty-state">
                                                 <div className="empty-state-icon">
-                                                    <UserMinus size={18} />
+                                                    <Search size={18} />
                                                 </div>
-                                                <span className="empty-state-text">No users available</span>
-                                                <span className="empty-state-subtext">All members assigned or none found</span>
+                                                <span className="empty-state-text">
+                                                    {searchTerm ? 'No members match your search' : 'No users available'}
+                                                </span>
+                                                <span className="empty-state-subtext">
+                                                    {searchTerm ? 'Try a different name' : 'All members assigned or none found'}
+                                                </span>
                                             </div>
                                         ) : (
-                                            availableUsers.map(user => {
+                                            filteredAndSortedUsers.map(user => {
                                                 const isAssigned = assignedUsers.some(u => String(u.id) === String(user.id));
                                                 return (
                                                     <div
@@ -236,7 +292,6 @@ export const WorkspaceCard: React.FC<WorkspaceCardProps> = ({
                                                             e.preventDefault();
                                                             e.stopPropagation();
                                                             onAssignUser?.(user.id);
-                                                            // setIsDropdownOpen(false); // Removed to keep open for multiple
                                                         }}
                                                     >
                                                         <div className="ws-item-avatar">{user.initials}</div>
