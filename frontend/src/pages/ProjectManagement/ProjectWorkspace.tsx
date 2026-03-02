@@ -4,7 +4,7 @@ import { useQuery, useQueryClient, useMutation } from 'react-query';
 import { WorkspaceCard } from './components/WorkspaceCard';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
 import { DescriptionModal } from './components/DescriptionModal';
-import { Info, Plus, ChevronLeft, Edit, Layers, ClipboardList, ChevronDown } from 'lucide-react';
+import { Info, Plus, ChevronLeft, Edit, Layers, ClipboardList, ChevronDown, UserPlus, UserMinus } from 'lucide-react';
 import AppLayout from '../../components/layout/AppLayout';
 import { projectService } from '../../services/projectService';
 import * as employeeService from '../../services/employeeService';
@@ -154,11 +154,6 @@ export const ProjectWorkspace: React.FC = () => {
         { enabled: !!projectId }
     );
 
-    const { data: projectMembers, refetch: refetchProjectMembers } = useQuery(
-        ['project-members', projectId],
-        () => projectService.getProjectMembers(projectId),
-        { enabled: !!projectId }
-    );
 
     const {
         data: modules,
@@ -189,8 +184,8 @@ export const ProjectWorkspace: React.FC = () => {
     const isGlobalManager = user?.role === 'manager';
     const isProjectReadOnly = project?.status?.toLowerCase() !== 'active';
 
-    // PM-level access strictly restricted to the assigned Project Manager
-    const isPM = isProjectManager;
+    // PM-level access: assigned PM OR HR OR Super Admin
+    const isPM = isProjectManager || isSuperAdmin || isHR;
 
     const canManageProject = isPM && !isProjectReadOnly;
     const canManageResources = isPM && !isProjectReadOnly;
@@ -198,7 +193,7 @@ export const ProjectWorkspace: React.FC = () => {
 
     const hasModuleAccess = modules?.find(m => m.id === selectedModuleId)?.assigned_users?.some(u => u.id === user?.id);
     const canAddTask = (canManageResources || hasModuleAccess) && !isProjectReadOnly;
-    const canManageStatus = isPM;
+    const canManageStatus = isPM && !isProjectReadOnly;
 
     const handleCreate = (type: 'module' | 'task', parentId: number) => {
         if (type === 'module' && !canCreateModule) return;
@@ -271,7 +266,6 @@ export const ProjectWorkspace: React.FC = () => {
     const handleCreateSuccess = () => {
         if (createType === ('project' as any)) {
             refetchProject();
-            refetchProjectMembers();
             refetchModules();
         } else if (createType === 'module') {
             refetchModules();
@@ -370,7 +364,7 @@ export const ProjectWorkspace: React.FC = () => {
                                     isPM={canManageResources}
                                     isCompact={true}
                                     createdByName={module.created_by_name}
-                                    availableUsers={(allEmployees || projectMembers || [])
+                                    availableUsers={(allEmployees || [])
                                         .filter((u: any) => String(u.id) !== String(project?.project_manager_id))
                                         .map((u: any) => ({
                                             ...u,

@@ -316,7 +316,7 @@ export const toggleAccess = async (req: AuthRequest, res: Response) => {
             return res.status(400).json({ error: 'Missing required parameters' });
         }
 
-        if (!['module', 'task'].includes(level)) {
+        if (!['project', 'module', 'task'].includes(level)) {
             return res.status(400).json({ error: 'Invalid level' });
         }
 
@@ -327,7 +327,9 @@ export const toggleAccess = async (req: AuthRequest, res: Response) => {
         // Permission Check
         let canManage = false;
         const role = req.user?.role || '';
-        if (level === 'module') {
+        if (level === 'project') {
+            canManage = await ProjectService.canUserManageProject(requestedBy, role, parseInt(targetId));
+        } else if (level === 'module') {
             canManage = await ProjectService.canUserManageModule(requestedBy, role, parseInt(targetId));
         } else if (level === 'task') {
             canManage = await ProjectService.canUserManageTask(requestedBy, role, parseInt(targetId));

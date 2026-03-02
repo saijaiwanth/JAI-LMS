@@ -180,9 +180,10 @@ export const CreateModal: React.FC<CreateModalProps> = ({
                     const isManager = user?.role === 'manager';
                     const isPM = String(initialData.project_manager_id) === String(user?.id);
 
-                    // Access strictly restricted to assigned Project Manager only.
-                    const canManageMetadata = isPM;
-                    const canManageDetails = isPM;
+                    // Requirement: Only the assigned Project Manager, HR, or Super Admin can edit
+                    const hasBypass = isGlobalAdmin || isHR;
+                    const canManageMetadata = isPM || hasBypass;
+                    const canManageDetails = isPM || hasBypass;
 
                     if (!canManageDetails) {
                         throw new Error('You do not have permission to edit this project');
@@ -210,8 +211,8 @@ export const CreateModal: React.FC<CreateModalProps> = ({
                 }
             } else if (type === 'module' && parentId) {
                 const payload = { ...basePayload };
-                // Access strictly restricted to PM. No global bypass.
-                const isAuthorized = projectManagerId === user?.id;
+                // HR and Super Admin have global management bypass
+                const isAuthorized = projectManagerId === user?.id || user?.role === 'super_admin' || user?.role === 'hr';
                 if (!isAuthorized) throw new Error('You do not have permission to manage modules');
 
                 if (isEdit && initialData?.id) {
@@ -236,9 +237,9 @@ export const CreateModal: React.FC<CreateModalProps> = ({
                 };
 
                 if (isEdit && initialData?.id) {
-                    // PERMISSION: Only creator or assigned Project Manager
+                    // PERMISSION: Only creator or assigned Project Manager/Admin/HR
                     const isCreator = String(initialData?.created_by) === String(user?.id);
-                    const isPM = projectManagerId === user?.id;
+                    const isPM = projectManagerId === user?.id || user?.role === 'super_admin' || user?.role === 'hr';
 
                     if (!isCreator && !isPM) {
                         throw new Error('Access denied: Only the creator or the project manager can edit this task.');
@@ -277,13 +278,17 @@ export const CreateModal: React.FC<CreateModalProps> = ({
         }
     };
 
-    const canEditDetails = type === 'project' && isEdit && (String(initialData?.project_manager_id) === String(user?.id));
+    const isGlobalAdmin = user?.role === 'super_admin';
+    const isHR = user?.role === 'hr';
+    const hasBypass = isGlobalAdmin || isHR;
+
+    const canEditDetails = type === 'project' && isEdit && (String(initialData?.project_manager_id) === String(user?.id) || hasBypass);
 
     // PM Selection & Metadata:
-    // Strictly restricted to the Project Manager or during creation (SA/HR/Manager)
+    // Strictly restricted to the Project Manager, HR, or Super Admin
     const canManageGlobal = ['super_admin', 'hr', 'manager'].includes(user?.role || '');
-    const isManagerSelectDisabled = isEdit ? String(initialData?.project_manager_id) !== String(user?.id) : !canManageGlobal;
-    const isMetadataDisabled = isEdit ? String(initialData?.project_manager_id) !== String(user?.id) : !canManageGlobal;
+    const isManagerSelectDisabled = isEdit ? (String(initialData?.project_manager_id) !== String(user?.id) && !hasBypass) : !canManageGlobal;
+    const isMetadataDisabled = isEdit ? (String(initialData?.project_manager_id) !== String(user?.id) && !hasBypass) : !canManageGlobal;
 
     // Character limits
     const NAME_LIMIT = 20;

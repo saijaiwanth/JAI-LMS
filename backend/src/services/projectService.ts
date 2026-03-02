@@ -1426,14 +1426,16 @@ export class ProjectService {
     return [];
   }
 
-  static async toggleAccess(level: 'module' | 'task' | 'activity', targetId: number, userId: number, action: 'add' | 'remove', requestedBy: number) {
+  static async toggleAccess(level: 'project' | 'module' | 'task' | 'activity', targetId: number, userId: number, action: 'add' | 'remove', requestedBy: number) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
 
       // 0. Status Check: Management actions only allowed for ACTIVE projects
       let statusQuery = '';
-      if (level === 'module') {
+      if (level === 'project') {
+        statusQuery = `SELECT status FROM projects WHERE id = $1`;
+      } else if (level === 'module') {
         statusQuery = `SELECT p.status FROM project_modules m JOIN projects p ON m.project_id = p.id WHERE m.id = $1`;
       } else if (level === 'task') {
         statusQuery = `SELECT p.status FROM project_tasks t JOIN project_modules m ON t.module_id = m.id JOIN projects p ON m.project_id = p.id WHERE t.id = $1`;
@@ -1457,17 +1459,27 @@ export class ProjectService {
 
       if (action === 'add') {
         console.log(`[ACCESS_TRACE] Adding ${uId} to ${table} for ${idColumn}=${tId}`);
-        const result = await client.query(
-          `INSERT INTO ${table} (${idColumn}, user_id, granted_by, created_by, updated_by)
-             VALUES ($1, $2, $3, $3, $3)
-             ON CONFLICT (${idColumn}, user_id) DO NOTHING`,
-          [tId, uId, requestedBy]
-        );
+        let insertQuery = '';
+        const params = [tId, uId, requestedBy];
+
+        if (level === 'project') {
+          insertQuery = `INSERT INTO project_members (project_id, user_id, created_by, updated_by)
+                         VALUES ($1, $2, $3, $3)
+                         ON CONFLICT (project_id, user_id) DO NOTHING`;
+        } else {
+          insertQuery = `INSERT INTO ${table} (${idColumn}, user_id, granted_by, created_by, updated_by)
+                         VALUES ($1, $2, $3, $3, $3)
+                         ON CONFLICT (${idColumn}, user_id) DO NOTHING`;
+        }
+
+        const result = await client.query(insertQuery, params);
         console.log(`[ACCESS_TRACE] Add result:`, result.rowCount);
       } else {
         // Validation: Prevent removing the Project Manager
         let pmCheckQuery = '';
-        if (level === 'module') {
+        if (level === 'project') {
+          pmCheckQuery = `SELECT project_manager_id FROM projects WHERE id = $1`;
+        } else if (level === 'module') {
           pmCheckQuery = `SELECT p.project_manager_id FROM project_modules m JOIN projects p ON m.project_id = p.id WHERE m.id = $1`;
         } else if (level === 'task') {
           pmCheckQuery = `SELECT p.project_manager_id FROM project_tasks t JOIN project_modules m ON t.module_id = m.id JOIN projects p ON m.project_id = p.id WHERE t.id = $1`;
@@ -1490,14 +1502,21 @@ export class ProjectService {
 
         // Remove
         console.log(`[ACCESS_TRACE] Removing ${uId} from ${table} for ${idColumn}=${tId}`);
-        const result = await client.query(
-          `DELETE FROM ${table} WHERE ${idColumn} = $1 AND user_id = $2`,
-          [tId, uId]
-        );
+        let deleteQuery = '';
+        if (level === 'project') {
+          deleteQuery = `DELETE FROM project_members WHERE project_id = $1 AND user_id = $2`;
+        } else {
+          deleteQuery = `DELETE FROM ${table} WHERE ${idColumn} = $1 AND user_id = $2`;
+        }
+
+        const result = await client.query(deleteQuery, [tId, uId]);
         console.log(`[ACCESS_TRACE] Remove result:`, result.rowCount);
 
         // Cascading Revocation
-        if (level === 'module') {
+        if (level === 'project') {
+          // Remove from all modules in this project
+          await this.wipeProjectResourceAccess(tId, client, uId);
+        } else if (level === 'module') {
           // Remove from all tasks in this module
           await client.query(
             `DELETE FROM task_access 
@@ -1529,7 +1548,19 @@ export class ProjectService {
 
       // Fetch Updated List to return to frontend (Must include PM)
       let updatedUsers = [];
-      if (level === 'module') {
+      if (level === 'project') {
+        const res = await client.query(`
+          SELECT u.id, 
+                 COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as name,
+                 UPPER(LEFT(COALESCE(u.first_name, ''), 1)) || UPPER(LEFT(COALESCE(u.last_name, ''), 1)) as initials,
+                 CASE WHEN u.id = p.project_manager_id THEN 0 ELSE 1 END as sort_order
+          FROM project_members pm
+          JOIN users u ON pm.user_id = u.id 
+          JOIN projects p ON pm.project_id = p.id
+          WHERE pm.project_id = $1
+          ORDER BY sort_order, name`, [tId]);
+        updatedUsers = res.rows;
+      } else if (level === 'module') {
         const res = await client.query(`
           SELECT u.id, 
                  COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as name,
@@ -1624,7 +1655,8 @@ export class ProjectService {
 
   // --- 6. Permission Helpers ---
   static async canUserManageProject(userId: number, role: string, projectId: number): Promise<boolean> {
-    // Access strictly restricted to assigned Project Manager only. No global bypass.
+    // HR and Super Admin have global bypass
+    if (role === 'super_admin' || role === 'hr') return true;
 
     // Only the assigned Project Manager can manage project metadata
     const res = await query(
@@ -1635,7 +1667,8 @@ export class ProjectService {
   }
 
   static async canUserManageResources(userId: number, role: string, projectId: number): Promise<boolean> {
-    // Access strictly restricted to assigned Project Manager only. No global bypass.
+    // HR and Super Admin have global bypass
+    if (role === 'super_admin' || role === 'hr') return true;
 
     const res = await query(`
       SELECT 1 FROM projects 
@@ -1647,7 +1680,8 @@ export class ProjectService {
   }
 
   static async canUserManageModule(userId: number, role: string, moduleId: number): Promise<boolean> {
-    // Access strictly restricted to PM or explicitly assigned users. No global bypass.
+    // HR and Super Admin have global bypass
+    if (role === 'super_admin' || role === 'hr') return true;
 
     const res = await query(`
       SELECT 1 FROM project_modules m JOIN projects p ON m.project_id = p.id
@@ -1660,7 +1694,8 @@ export class ProjectService {
   }
 
   static async canUserManageTask(userId: number, role: string, taskId: number): Promise<boolean> {
-    // Access strictly restricted to PM or task creator. No global bypass.
+    // HR and Super Admin have global bypass
+    if (role === 'super_admin' || role === 'hr') return true;
 
     const res = await query(`
       SELECT 1 FROM project_tasks t 
@@ -1675,7 +1710,8 @@ export class ProjectService {
   }
 
   static async canUserManageActivity(userId: number, role: string, activityId: number): Promise<boolean> {
-    // Access strictly restricted to PM or resource chain owners. No global bypass.
+    // HR and Super Admin have global bypass
+    if (role === 'super_admin' || role === 'hr') return true;
 
     const res = await query(`
       SELECT 1 FROM project_activities a 

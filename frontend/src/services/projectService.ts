@@ -129,7 +129,7 @@ export const projectService = {
     getAccessList: (level: string, id: number) =>
         api.get<any[]>(`/projects/${id}/access-list?level=${level}`).then(res => res.data),
 
-    toggleAccess: async (level: 'module' | 'task', targetId: number, userId: number, action: 'add' | 'remove') => {
+    toggleAccess: async (level: 'project' | 'module' | 'task', targetId: number, userId: number, action: 'add' | 'remove') => {
         const response = await api.post('/projects/access/toggle', { level, targetId, userId, action });
         return response.data;
     },
