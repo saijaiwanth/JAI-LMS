@@ -51,7 +51,8 @@ app.use(
         process.env.FRONTEND_URL || 'http://localhost:3000',
         'http://51.15.227.10:3000',
         'http://intra.tensorgo.com',
-        'https://intra.tensorgo.com'
+        'https://intra.tensorgo.com',
+        'http://192.168.12.35:3001'
       ];
 
       if (allowedOrigins.includes(origin)) {
