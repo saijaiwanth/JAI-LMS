@@ -224,7 +224,7 @@ const LeaveApprovalPage: React.FC = () => {
           ...detailRequest,
           // Prioritize detailRequest fields if they exist
           timeForPermission: detailRequest.timeForPermission || originalRequest.timeForPermission || null,
-          leaveReason: detailRequest.reason || originalRequest.leaveReason || originalRequest.reason
+          leaveReason: detailRequest.leaveReason || originalRequest.leaveReason
         });
         setIsModalOpen(true);
       }
@@ -269,7 +269,7 @@ const LeaveApprovalPage: React.FC = () => {
           endType: request.endType,
           leaveType: request.leaveType,
           noOfDays: fullRequest.noOfDays,
-          leaveReason: request.reason,
+          leaveReason: request.leaveReason || fullRequest.leaveReason,
           currentStatus: fullRequest.leaveStatus,
           doctorNote: request.doctorNote || null,
           rejectionReason: fullRequest.rejectionReason || request.rejectionReason || null,
@@ -339,7 +339,7 @@ const LeaveApprovalPage: React.FC = () => {
         endType: request.endType,
         leaveType: request.leaveType,
         noOfDays: fullRequest.noOfDays,
-        leaveReason: request.reason,
+        leaveReason: request.leaveReason || fullRequest.leaveReason,
         currentStatus: fullRequest.leaveStatus,
         doctorNote: request.doctorNote || null,
         rejectionReason: fullRequest.rejectionReason || request.rejectionReason || null,

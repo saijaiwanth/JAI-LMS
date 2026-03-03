@@ -963,7 +963,6 @@ export const sendLeaveAllocationEmail = async (
 
   return await sendEmail({
     to: employeeEmail,
-    cc: ensureLeavesCC(),
     subject: emailSubject,
     html: emailHtml,
     text: emailText,
@@ -987,7 +986,6 @@ export const sendSuperAdminLeaveAllocationEmail = async (
 
   return await sendEmail({
     to: adminEmail,
-    cc: ensureLeavesCC(),
     subject: emailSubject,
     html: emailHtml,
     text: emailText,
@@ -1140,7 +1138,6 @@ export const sendPendingLeaveReminderEmail = async (
 
   return await sendEmail({
     to: managerEmail,
-    cc: ensureLeavesCC(),
     subject: emailSubject,
     html: emailHtml,
     text: emailText,
@@ -1294,7 +1291,6 @@ export const sendLeaveCarryForwardEmail = async (
 
   return await sendEmail({
     to: employeeEmail,
-    cc: ensureLeavesCC(),
     subject: emailSubject,
     html: emailHtml,
     text: emailText,

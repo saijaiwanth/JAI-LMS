@@ -196,7 +196,8 @@ export const getAnalytics = async (req: AuthRequest, res: Response) => {
                 u.emp_id,
                 u.profile_photo_url,
                 ld.day_type,
-                ld.leave_type
+                ld.leave_type,
+                lr.reason as leave_reason
             FROM leave_days ld
             JOIN users u ON ld.employee_id = u.id
             JOIN leave_requests lr ON ld.leave_request_id = lr.id
@@ -215,7 +216,8 @@ export const getAnalytics = async (req: AuthRequest, res: Response) => {
                 u.profile_photo_url,
                 lr.start_date,
                 lr.end_date,
-                lr.leave_type
+                lr.leave_type,
+                lr.reason as leave_reason
             FROM leave_requests lr
             JOIN users u ON lr.employee_id = u.id
             WHERE lr.start_date > (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::DATE

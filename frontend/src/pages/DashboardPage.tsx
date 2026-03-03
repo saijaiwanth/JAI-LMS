@@ -246,8 +246,8 @@ const DashboardPage: React.FC = () => {
                                                 </div>
                                             </div>
                                             <div className="leave-badge">
-                                                <span className={`badge ${leave.day_type}`}>
-                                                    {leave.day_type.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                                                <span className={`badge ${leave.leave_type === 'permission' ? 'permission' : leave.day_type}`}>
+                                                    {leave.leave_type === 'permission' ? 'PERM' : leave.day_type === 'half' ? 'HALF' : 'FULL'}
                                                 </span>
                                             </div>
                                         </div>

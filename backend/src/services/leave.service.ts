@@ -1018,7 +1018,7 @@ export const getLeaveRequestById = async (requestId: number, userId: number, use
     startType: row.start_type,
     endDate: formatDate(row.end_date),
     endType: row.end_type,
-    reason: row.reason,
+    leaveReason: row.reason,
     rejectionReason,
     approverName,
     approverRole,
@@ -1755,7 +1755,7 @@ export const getPendingLeaveRequests = async (
     LEFT JOIN users hr ON hr.id = lr.hr_approved_by
     LEFT JOIN users super_admin ON super_admin.id = lr.super_admin_approved_by
     LEFT JOIN users l1 ON u.reporting_manager_id = l1.id
-    WHERE 1=1
+    WHERE u.status IN ('active', 'on_notice')
   `;
 
   const params: any[] = [];
@@ -1959,7 +1959,7 @@ export const getPendingLeaveRequests = async (
     FROM leave_requests lr
     JOIN users u ON lr.employee_id = u.id
     LEFT JOIN users l1 ON u.reporting_manager_id = l1.id
-    WHERE 1=1
+    WHERE u.status IN ('active', 'on_notice')
       AND (
         lr.current_status IN ('pending','partially_approved')
         OR EXISTS (
@@ -4107,6 +4107,7 @@ export const getApprovedLeaves = async (
         lr.manager_approval_comment,
         lr.hr_approval_comment,
         lr.super_admin_approval_comment,
+        lr.reason,
         lr.updated_at,
         manager.first_name || ' ' || COALESCE(manager.last_name, '') as manager_name,
         hr.first_name || ' ' || COALESCE(hr.last_name, '') as hr_name,
@@ -4127,6 +4128,7 @@ export const getApprovedLeaves = async (
      LEFT JOIN users sa ON lr.super_admin_approved_by = sa.id
      LEFT JOIN users l1 ON u.reporting_manager_id = l1.id
      WHERE lr.current_status != 'pending'
+        AND u.status IN ('active', 'on_notice')
         AND NOT EXISTS (
           SELECT 1 FROM leave_days ld2
           WHERE ld2.leave_request_id = lr.id 
@@ -4146,7 +4148,7 @@ export const getApprovedLeaves = async (
   }
 
   query += ` GROUP BY lr.id, u.emp_id, u.first_name, u.last_name, lr.applied_date, lr.start_date, lr.end_date, lr.leave_type, lr.time_for_permission_start, lr.time_for_permission_end, lr.current_status,
-              lr.manager_approval_comment, lr.hr_approval_comment, lr.super_admin_approval_comment,
+              lr.manager_approval_comment, lr.hr_approval_comment, lr.super_admin_approval_comment, lr.reason,
               lr.updated_at, manager.first_name, manager.last_name, hr.first_name, hr.last_name, sa.first_name, sa.last_name,
               lr.manager_approval_date, lr.hr_approval_date, lr.super_admin_approval_date, u.status, u.user_role
      ORDER BY lr.applied_date DESC, lr.updated_at DESC
@@ -4161,6 +4163,7 @@ export const getApprovedLeaves = async (
      JOIN users u ON lr.employee_id = u.id
      LEFT JOIN users l1 ON u.reporting_manager_id = l1.id
      WHERE lr.current_status != 'pending'
+        AND u.status IN ('active', 'on_notice')
         AND NOT EXISTS (
           SELECT 1 FROM leave_days ld2
           WHERE ld2.leave_request_id = lr.id 
@@ -4301,6 +4304,7 @@ export const getApprovedLeaves = async (
         start: row.time_for_permission_start.toString().substring(0, 5),
         end: row.time_for_permission_end.toString().substring(0, 5)
       } : undefined,
+      leaveReason: row.reason,
       noOfDays,
       leaveStatus: displayStatus,
       updatedAt: row.updated_at,
