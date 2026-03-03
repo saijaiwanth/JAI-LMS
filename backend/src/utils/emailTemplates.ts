@@ -395,7 +395,7 @@ const generateLeaveApplicationEmailHtml = (data: LeaveApplicationEmailData): str
   `;
 
   return generateEmailWrapper(
-    'Leave Application Notification',
+    'Leave Application Submitted – Action Required',
     content,
     uniqueId,
     `New leave application from ${data.employeeName}`
@@ -589,7 +589,6 @@ const generateLeaveStatusEmailHtml = (data: LeaveStatusEmailData): string => {
     
     <p style="margin-top: 30px;">Please log in to the portal to review the details.</p>
     <p>For any clarification, contact your reporting manager or the HR team.</p>
-    <p>For further clarification, please connect with your reporting manager or HR</p>
 
     <p>Regards,<br/>TensorGo HR Team</p>
   `;
@@ -777,7 +776,7 @@ export const sendNewEmployeeCredentialsEmail = async (
   const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
   const uniqueId = `${timestamp}${randomStr}`;
 
-  const emailSubject = `Welcome to TensorGo Intranet – Access Details`;
+  const emailSubject = `Welcome to TensorGo Intranet – Access Details [Ref: ${uniqueId}]`;
   const emailHtml = generateNewEmployeeCredentialsEmailHtml(data);
   const emailText = generateNewEmployeeCredentialsEmailText(data);
 
@@ -823,24 +822,23 @@ const generateLeaveAllocationEmailHtml = (data: LeaveAllocationEmailData): strin
     { label: 'Employee ID:', value: data.employeeEmpId || 'N/A' },
     { label: 'Leave Type:', value: leaveTypeDisplay, isBold: true },
     { label: 'Days Allocated:', value: `${data.allocatedDays} ${data.allocatedDays === 1 ? 'day' : 'days'}`, isBold: true },
-    { label: 'Allocated By:', value: data.allocatedBy },
     { label: 'Allocation Date:', value: allocationDateDisplay }
   ]);
 
   const content = `
-    <p>Hello ${data.allocatedBy},</p>
-    <p>This is to notify you that a leave allocation has been processed in the TensorGo system for the employee listed below.</p>
-    <h3 style="margin: 30px 0 10px 0; font-size: 18px;">Allocation Details</h3>
+    <p>Hello ${data.employeeName},</p>
+    <p>This is to inform you that a leave allocation has been processed in the TensorGo system with the following details:</p>
+    <h3 style="margin: 30px 0 10px 0; font-size: 18px; color: #1e3a8a;">Allocation Details</h3>
     <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 20px;">
       ${detailsTable}
     </div>
-    <p>This update has been recorded for administrative tracking and compliance purposes.</p>
-    <p>If this allocation was not intended or requires verification, please review the transaction in the admin portal or contact HR immediately.</p>
+    <p style="margin-top: 25px;">This has been updated in the system for your reference.</p>
+    <p>If you have any questions or notice any discrepancy, please feel free to reach out to the HR team.</p>
     <p>Regards,<br/>TensorGo HR Team</p>
   `;
 
   return generateEmailWrapper(
-    'Leave Allocation Alert - Super Admin',
+    'Leave Allocation Update',
     content,
     uniqueId,
     `Leave allocation processed for ${data.employeeName}`
@@ -852,25 +850,24 @@ const generateLeaveAllocationEmailText = (data: LeaveAllocationEmailData): strin
   const allocationDateDisplay = formatDateForDisplay(data.allocationDate);
 
   return `
-Leave Allocation Alert – Administrative Notification
+Leave Allocation Update
 
-Hello ${data.allocatedBy},
-
-This is to notify you that a leave allocation has been processed in the TensorGo system for the employee listed below.
+Hello ${data.employeeName},
+This is to inform you that a leave allocation has been processed in the TensorGo system with the following details:
 
 Allocation Details
-• Employee Name: ${data.employeeName}
+  Employee Name: ${data.employeeName}
 • Employee ID: ${data.employeeEmpId || 'N/A'}
 • Leave Type: ${leaveTypeDisplay}
 • Days Allocated: ${data.allocatedDays}
-• Allocated By: ${data.allocatedBy}
 • Allocation Date: ${allocationDateDisplay}
 
-This update has been recorded for administrative tracking and compliance purposes.
-If this allocation was not intended or requires verification, please review the transaction in the admin portal or contact HR immediately.
+This has been updated in the system for your reference.
+If you have any questions or notice any discrepancy, please feel free to reach out to the HR team.
 
 Regards,
 TensorGo HR Team
+
 This is an auto-generated email from the TensorGo Intranet. Please do not reply to this message.
   `;
 };
@@ -953,7 +950,7 @@ export const sendLeaveAllocationEmail = async (
   const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
   const uniqueId = `${timestamp}${randomStr}`;
 
-  const emailSubject = `Leave Balance Updated [Ref: ${uniqueId}]`;
+  const emailSubject = `Leave Allocation Update [Ref: ${uniqueId}]`;
   // Create a copy of data without documentUrl for employee
   const employeeData = { ...data };
   delete employeeData.documentUrl;
@@ -980,7 +977,7 @@ export const sendSuperAdminLeaveAllocationEmail = async (
   const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
   const uniqueId = `${timestamp}${randomStr}`;
 
-  const emailSubject = 'Leave Allocation Alert – Administrative Notification';
+  const emailSubject = `Leave Allocation Alert – Administrative Notification [Ref: ${uniqueId}]`;
   const emailHtml = generateSuperAdminLeaveAllocationEmailHtml(data);
   const emailText = generateSuperAdminLeaveAllocationEmailText(data);
 
@@ -1357,7 +1354,7 @@ const generateUrgentLeaveApplicationEmailHtml = (data: LeaveApplicationEmailData
   `;
 
   return generateEmailWrapper(
-    'Urgent Leave Application',
+    'Urgent Leave Application – Immediate Action Required',
     content,
     uniqueId,
     `IMPORTANT: Urgent leave application from ${data.employeeName}`
@@ -1451,7 +1448,7 @@ const generateEmployeeDetailsUpdateEmailHtml = (data: EmployeeDetailsUpdateEmail
   `;
 
   return generateEmailWrapper(
-    'Profile Update Notification',
+    'Profile Update Notification – TensorGo Intranet',
     content,
     uniqueId,
     'Your profile information has been updated'
@@ -1524,7 +1521,8 @@ const generateHolidayCalendarReminderEmailHtml = (data: HolidayCalendarReminderE
 
   const content = `
     <p>Hello ${data.recipientName},</p>
-    <p>This is a reminder to review and update the organizational holiday calendar for the upcoming year. Kindly ensure it is finalized and published before the new year.</p>
+    <p>This is a reminder to review and update the organizational holiday calendar for the upcoming year. </p>
+    <p>Kindly ensure it is finalized and published before the new year.</p>
     <p>Regards,<br/>TensorGo HR Team</p>
   `;
 
@@ -1545,7 +1543,8 @@ Reminder: Update Upcoming Year Holiday Calendar
 
 Hello ${data.recipientName},
 
-This is a reminder to review and update the organizational holiday calendar for the upcoming year. Kindly ensure it is finalized and published before the new year.
+This is a reminder to review and update the organizational holiday calendar for the upcoming year. 
+Kindly ensure it is finalized and published before the new year.
 
 Regards,
 TensorGo HR Team
@@ -1662,7 +1661,7 @@ export const sendTimesheetStatusEmail = async (
   return await sendEmail({
     to: recipientEmail,
     subject: `${title} - TensorGo Intranet [Ref: ${uniqueId}]`,
-    html: generateEmailWrapper(title, content, uniqueId, `${title} notification`),
+    html: generateEmailWrapper(`${title} - TensorGo Intranet`, content, uniqueId, `${title} notification`),
     text: `${title}\n\n${mainMessage.replace(/<br\/>/g, '\n').replace(/<\/?[^>]+(>|$)/g, "")}`
   });
 };
@@ -1686,7 +1685,7 @@ export const sendTimesheetReminderEmail = async (
 
   if (data.reminderType === 'daily') {
     subject = 'Reminder: Daily Timesheet Pending';
-    title = 'Daily Timesheet Reminder';
+    title = 'Reminder: Daily Timesheet Pending';
     contentHtml = `
       <p>Hello ${data.employeeName},</p>
       <p>Our records indicate that your timesheet for today (<strong>${data.date}</strong>) has not yet been submitted.</p>
@@ -1713,7 +1712,7 @@ This is an auto-generated email from the TensorGo Intranet. Please do not reply 
     preview = `Daily timesheet pending for ${data.date}`;
   } else if (data.reminderType === 'friday_alert') {
     subject = 'Timesheet Alert: Weekly Hours Below Expected Threshold';
-    title = 'Weekly Timesheet Alert';
+    title = 'Timesheet Alert: Weekly Hours Below Expected Threshold';
     contentHtml = `
       <p>Hello ${data.employeeName},</p>
       <p>Your logged timesheet hours for this week are currently below the expected threshold.</p>
@@ -1748,7 +1747,7 @@ This is an auto-generated email from the TensorGo Intranet. Please do not reply 
   } else {
     // criteria_not_met or other
     subject = 'Timesheet Criteria Not Met – Immediate Action Required';
-    title = 'Timesheet Alert';
+    title = 'Timesheet Criteria Not Met – Immediate Action Required';
     contentHtml = `
       <p>Hello ${data.employeeName},</p>
       <p>Your timesheet for the current week does not meet the required submission criteria.</p>
@@ -1787,7 +1786,7 @@ This is an auto-generated email from the TensorGo Intranet. Please do not reply 
 
   return await sendEmail({
     to: recipientEmail,
-    subject: subject,
+    subject: `${subject} [Ref: ${uniqueId}]`,
     html: generateEmailWrapper(title, contentHtml, uniqueId, preview),
     text: contentText.trim()
   });
@@ -1804,7 +1803,7 @@ export const sendTimesheetSubmissionEmail = async (
   const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
   const uniqueId = `${timestamp}${randomStr}`;
 
-  const title = 'Timesheet Submitted';
+  const title = 'Timesheet Submitted – Review Required';
   const subject = 'Timesheet Submitted – Review Required';
 
   const content = `
@@ -1904,7 +1903,7 @@ export const sendTimesheetSummaryEmail = async (
   return await sendEmail({
     to: managerEmail,
     subject: `Weekly Timesheet Summary – Team Status Report [Ref: ${uniqueId}]`,
-    html: generateEmailWrapper('Weekly Timesheet Summary', content, uniqueId, `Team status report for ${data.startDate} to ${data.endDate}`),
+    html: generateEmailWrapper('Weekly Timesheet Summary – Team Status Report', content, uniqueId, `Team status report for ${data.startDate} to ${data.endDate}`),
     text: `
 Weekly Timesheet Summary – Team Status Report
 
@@ -2096,7 +2095,6 @@ const generateRoleUpdateEmailHtml = (data: RoleUpdateEmailData): string => {
     <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #3b82f6; padding: 25px; margin: 30px 0; border-radius: 6px;">
       <p style="margin: 0 0 10px 0; color: #1e3a8a; font-size: 16px; font-weight: 600;">Updated Role: <span style="color: #1e40af;">${data.newRole}</span></p>
       <p style="margin: 0; color: #64748b; font-size: 14px;">Effective Date: ${data.effectiveDate}</p>
-      ${data.updatedBy ? `<p style="margin: 10px 0 0 0; color: #94a3b8; font-size: 13px;">Updated by: ${data.updatedBy}</p>` : ''}
     </div>
 
     <p>These changes may impact the modules, dashboards, and workflows available to you.</p>
@@ -2123,7 +2121,6 @@ Your role and access permissions on the TensorGo Intranet have been updated.
 
 Updated Role: ${data.newRole}
 Effective Date: ${data.effectiveDate}
-${data.updatedBy ? `Updated by: ${data.updatedBy}` : ''}
 
 These changes may impact the modules, dashboards, and workflows available to you.
 
@@ -2182,7 +2179,6 @@ const generateStatusUpdateEmailHtml = (data: StatusUpdateEmailData): string => {
     <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #3b82f6; padding: 25px; margin: 30px 0; border-radius: 6px;">
       <p style="margin: 0 0 10px 0; color: #1e3a8a; font-size: 16px; font-weight: 600;">Updated Status: <span style="color: #1e40af;">${data.newStatus}</span></p>
       <p style="margin: 0; color: #64748b; font-size: 14px;">Effective Date: ${data.effectiveDate}</p>
-      ${data.updatedBy ? `<p style="margin: 10px 0 0 0; color: #94a3b8; font-size: 13px;">Updated by: ${data.updatedBy}</p>` : ''}
     </div>
 
     <p>Your system access, benefits, or workflows may be impacted based on this change.</p>
@@ -2209,7 +2205,6 @@ This is to notify you that your employment status in the TensorGo system has bee
 
 Updated Status: ${data.newStatus}
 Effective Date: ${data.effectiveDate}
-${data.updatedBy ? `Updated by: ${data.updatedBy}` : ''}
 
 Your system access, benefits, or workflows may be impacted based on this change.
 
@@ -2275,7 +2270,7 @@ const generateReportingManagerUpdateEmailHtml = (data: ReportingManagerUpdateEma
   `;
 
   return generateEmailWrapper(
-    'Reporting Manager Updated',
+    'Reporting Manager Updated – TensorGo Intranet',
     content,
     uniqueId,
     `Your reporting manager has been updated to ${data.managerName}`
