@@ -1794,15 +1794,16 @@ export const addLeavesToEmployee = async (
         await emailTemplates.sendLeaveAllocationEmail(employee.email, emailData);
         logger.info(`✅ Leave allocation email sent to employee: ${employee.email}`);
 
-        // 2. Fetch all active Super Admins
+        // 2. Fetch all active Super Admins with names
         const superAdminsResult = await pool.query(
-          "SELECT email FROM users WHERE user_role = 'super_admin' AND status = 'active'"
+          "SELECT email, first_name || ' ' || COALESCE(last_name, '') as name FROM users WHERE user_role = 'super_admin' AND status = 'active'"
         );
 
         // 3. Send notification to all Super Admins (with documentUrl)
         for (const admin of superAdminsResult.rows) {
           try {
-            await emailTemplates.sendSuperAdminLeaveAllocationEmail(admin.email, emailData);
+            const adminEmailData = { ...emailData, adminName: admin.name || 'Admin' };
+            await emailTemplates.sendSuperAdminLeaveAllocationEmail(admin.email, adminEmailData);
             logger.info(`✅ Leave allocation alert sent to Super Admin: ${admin.email}`);
           } catch (adminEmailError) {
             logger.error(`❌ Error sending leave allocation email to Super Admin ${admin.email}:`, adminEmailError);

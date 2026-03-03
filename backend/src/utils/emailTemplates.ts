@@ -568,17 +568,6 @@ const generateLeaveStatusEmailHtml = (data: LeaveStatusEmailData): string => {
     <p>Hello ${data.employeeName},</p>
     <p>Your leave request has been approved by <strong>${data.approverName}</strong>.</p>
     
-    <h3 style="margin: 30px 0 10px 0; font-size: 18px; color: #1e3a8a;">Leave Request Details</h3>
-    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 20px;">
-      ${detailsTable}
-    </div>
-    
-    <div style="margin-top: 20px; padding: 15px; background-color: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 4px;">
-       <p style="margin: 0; font-size: 14px; color: #1e40af;">
-        <strong>Approved by:</strong> ${data.approverName} (${data.approverEmpId})
-      </p>
-    </div>
-
     <p style="margin-top: 30px;">Please ensure a proper handover of responsibilities, if applicable, before you leave.</p>
     <p>For any clarification, contact the HR team.</p>
 
@@ -586,7 +575,7 @@ const generateLeaveStatusEmailHtml = (data: LeaveStatusEmailData): string => {
   `;
 
     return generateEmailWrapper(
-      'Leave Request Status',
+      'Leave Request Approved – Confirmation',
       content,
       uniqueId,
       `Your leave request has been approved`
@@ -598,25 +587,15 @@ const generateLeaveStatusEmailHtml = (data: LeaveStatusEmailData): string => {
     <p>Hello ${data.employeeName},</p>
     <p>Your leave request has been reviewed and not approved by <strong>${data.approverName}</strong>.</p>
     
-    <h3 style="margin: 30px 0 10px 0; font-size: 18px; color: #1e3a8a;">Leave Request Details</h3>
-    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 20px;">
-      ${detailsTable}
-    </div>
-    
-    <div style="margin-top: 20px; padding: 15px; background-color: #fef2f2; border-left: 4px solid #dc2626; border-radius: 4px;">
-       <p style="margin: 0; font-size: 14px; color: #991b1b;">
-        <strong>Rejected by:</strong> ${data.approverName} (${data.approverEmpId})
-      </p>
-    </div>
-
     <p style="margin-top: 30px;">Please log in to the portal to review the details.</p>
     <p>For any clarification, contact your reporting manager or the HR team.</p>
+    <p>For further clarification, please connect with your reporting manager or HR</p>
 
     <p>Regards,<br/>TensorGo HR Team</p>
   `;
 
     return generateEmailWrapper(
-      'Leave Request Status',
+      'Leave Request Update – Rejected',
       content,
       uniqueId,
       `Your leave request has been rejected`
@@ -646,16 +625,6 @@ Hello ${data.employeeName},
 
 Your leave request has been approved by ${data.approverName}.
 
-Leave Request Details
-• Employee Name: ${data.employeeName}
-• Employee ID: ${data.employeeEmpId}
-• Leave Type: ${leaveTypeDisplay}
-• Start Date: ${startDateDisplay} (${startTypeDisplay})
-• End Date: ${endDateDisplay} (${endTypeDisplay})
-• Duration: ${data.noOfDays} ${data.noOfDays === 1 ? 'day' : 'days'}
-• Reason: ${data.reason}
-${data.comment ? `• Approval Comment: ${data.comment}\n` : ''}• Status: APPROVED
-
 Please ensure a proper handover of responsibilities, if applicable, before you leave.
 For any clarification, contact the HR team.
 
@@ -675,16 +644,6 @@ Leave Request Update – Rejected
 Hello ${data.employeeName},
 
 Your leave request has been reviewed and not approved by ${data.approverName}.
-
-Leave Request Details
-• Employee Name: ${data.employeeName}
-• Employee ID: ${data.employeeEmpId}
-• Leave Type: ${leaveTypeDisplay}
-• Start Date: ${startDateDisplay} (${startTypeDisplay})
-• End Date: ${endDateDisplay} (${endTypeDisplay})
-• Duration: ${data.noOfDays} ${data.noOfDays === 1 ? 'day' : 'days'}
-• Reason: ${data.reason}
-${data.comment ? `• Rejection Comment: ${data.comment}\n` : ''}• Status: REJECTED
 
 Please log in to the portal to review the details.
 For any clarification, contact your reporting manager or the HR team.
@@ -844,8 +803,8 @@ export interface LeaveAllocationEmailData {
   allocatedBy: string;
   allocatedByEmpId?: string; // ID of the person allocating leaves
   allocationDate: string;
+  adminName?: string; // Name of the admin being notified
   comment?: string; // Optional comment from the person allocating leaves
-  conversionNote?: string; // Optional note for LOP to casual conversions
   documentUrl?: string; // Optional document URL or key
 }
 
@@ -929,31 +888,27 @@ const generateSuperAdminLeaveAllocationEmailHtml = (data: LeaveAllocationEmailDa
   const detailsTable = generateDetailsTable([
     { label: 'Employee Name:', value: data.employeeName, isBold: true },
     { label: 'Employee ID:', value: data.employeeEmpId },
-    { label: 'Leave Type:', value: leaveTypeDisplay, isBold: true },
-    { label: 'Days Allocated:', value: `${data.allocatedDays} ${data.allocatedDays === 1 ? 'day' : 'days'}`, isBold: true },
+    { label: 'Leave Type:', value: leaveTypeDisplay },
+    { label: 'Days Allocated:', value: `${data.allocatedDays}` },
     { label: 'Allocated By:', value: data.allocatedBy },
-    { label: 'Allocation Date:', value: allocationDateDisplay },
-    ...(data.comment ? [{ label: 'Comment:', value: data.comment }] : []),
-    ...(data.documentUrl ? [{
-      label: 'Document:',
-      value: `<a href="${data.documentUrl}" target="_blank" style="color: #2563eb; text-decoration: underline;">View Attachment</a>`,
-      isHtml: true
-    }] : [])
+    { label: 'Allocation Date:', value: allocationDateDisplay }
   ]);
 
   const content = `
-    <p>Dear Super Admin,</p>
-    <p>This is to notify you that <strong>${data.allocatedBy}</strong> has added <strong>${data.allocatedDays} ${data.allocatedDays === 1 ? 'day' : 'days'}</strong> of <strong>${leaveTypeDisplay}</strong> to <strong>${data.employeeName}'s</strong> leave balance.</p>
-    <h3 style="margin: 30px 0 10px 0; font-size: 18px;">Allocation Details</h3>
+    <p>Hello ${data.adminName || 'Admin'},</p>
+    <p>This is to notify you that a leave allocation has been processed in the TensorGo system for the employee listed below.</p>
+    <h3 style="margin: 30px 0 10px 0; font-size: 18px; color: #1e3a8a;">Allocation Details</h3>
     ${detailsTable}
-    <p style="margin-top: 30px;">Best Regards,<br/><strong>TensorGo Intranet</strong></p>
+    <p style="margin-top: 30px;">This update has been recorded for administrative tracking and compliance purposes.</p>
+    <p>If this allocation was not intended or requires verification, please review the transaction in the admin portal or contact HR immediately.</p>
+    <p>Regards,<br/>TensorGo HR Team</p>
   `;
 
   return generateEmailWrapper(
-    'Leave Allocation Alert - Super Admin',
+    'Leave Allocation Alert – Administrative Notification',
     content,
     uniqueId,
-    `${data.allocatedBy} added leaves to ${data.employeeName}`
+    `Leave allocation processed for ${data.employeeName}`
   );
 };
 
@@ -965,23 +920,28 @@ const generateSuperAdminLeaveAllocationEmailText = (data: LeaveAllocationEmailDa
   const allocationDateDisplay = formatDateForDisplay(data.allocationDate);
 
   return `
-Leave Allocation Alert - Super Admin
+Leave Allocation Alert – Administrative Notification
 
-Dear Super Admin,
+Hello ${data.adminName || 'Admin'},
 
-This is to notify you that ${data.allocatedBy} has added ${data.allocatedDays} ${data.allocatedDays === 1 ? 'day' : 'days'} of ${leaveTypeDisplay} to ${data.employeeName}'s leave balance.
+This is to notify you that a leave allocation has been processed in the TensorGo system for the employee listed below.
 
-Allocation Details:
-- Employee Name: ${data.employeeName}
-- Employee ID: ${data.employeeEmpId}
-- Leave Type: ${leaveTypeDisplay}
-- Days Allocated: ${data.allocatedDays}
-- Allocated By: ${data.allocatedBy}
-- Allocation Date: ${allocationDateDisplay}
-${data.comment ? `- Comment: ${data.comment}\n` : ''}${data.documentUrl ? `- Document: ${data.documentUrl}\n` : ''}
+Allocation Details
+• Employee Name: ${data.employeeName}
+• Employee ID: ${data.employeeEmpId}
+• Leave Type: ${leaveTypeDisplay}
+• Days Allocated: ${data.allocatedDays}
+• Allocated By: ${data.allocatedBy}
+• Allocation Date: ${allocationDateDisplay}
 
-Best Regards,
-TensorGo Intranet
+This update has been recorded for administrative tracking and compliance purposes.
+
+If this allocation was not intended or requires verification, please review the transaction in the admin portal or contact HR immediately.
+
+Regards,
+TensorGo HR Team
+
+This is an auto-generated email from the TensorGo Intranet. Please do not reply to this message.
   `;
 };
 
@@ -1021,7 +981,7 @@ export const sendSuperAdminLeaveAllocationEmail = async (
   const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
   const uniqueId = `${timestamp}${randomStr}`;
 
-  const emailSubject = `Leave Allocation Alert: ${data.allocatedBy} ➜ ${data.employeeName} [Ref: ${uniqueId}]`;
+  const emailSubject = 'Leave Allocation Alert – Administrative Notification';
   const emailHtml = generateSuperAdminLeaveAllocationEmailHtml(data);
   const emailText = generateSuperAdminLeaveAllocationEmailText(data);
 
@@ -1131,24 +1091,17 @@ const generatePendingLeaveReminderEmailHtml = (data: PendingLeaveReminderEmailDa
   const uniqueId = `${timestamp}${randomStr}`;
 
   const content = `
-    <div style="background-color: #fefce8; border-left: 4px solid #f59e0b; padding: 15px; border-radius: 4px; margin-bottom: 25px;">
-      <p style="margin: 0; color: #92400e; font-weight: bold; font-size: 14px;">
-        Action Required: You have pending leave requests awaiting review.
-      </p>
-    </div>
     <p>Hello ${data.managerName},</p>
     <p>This is a reminder that there are leave requests pending your review and approval in the TensorGo Intranet.</p>
     <p>Timely action is important to ensure workforce planning and employee scheduling are not impacted.</p>
-    <p style="margin-top: 20px;">Please log in to the portal to review and take the necessary action on the pending requests.</p>
-    
-    ${generateButton(LEAVE_APPROVAL_URL, 'Go to Leave Approvals')}
-    
+    <p>Please log in to the portal to review and take the necessary action on the pending requests.</p>
     <p>If you require any assistance, please contact the HR team.</p>
+    
     <p>Regards,<br/>TensorGo HR Team</p>
   `;
 
   return generateEmailWrapper(
-    'Pending Leave Approvals Reminder',
+    'Reminder: Pending Leave Requests Awaiting Your Action',
     content,
     uniqueId,
     `You have pending leave requests awaiting review`
@@ -1212,24 +1165,16 @@ const generateBirthdayWishEmailHtml = (data: BirthdayWishEmailData): string => {
   const uniqueId = `${timestamp}${randomStr}`;
 
   const content = `
-    <div style="text-align: left; padding: 20px 0;">
-      <p style="font-size: 16px; line-height: 1.7; color: #374151; margin-bottom: 20px;">
-        Wishing you a very happy birthday!
-      </p>
-      <p style="font-size: 16px; line-height: 1.7; color: #374151; margin-bottom: 20px;">
-        May the year ahead bring you success, happiness, and new achievements. We value your contributions to TensorGo and look forward to another great year together.
-      </p>
-      <p style="font-size: 16px; line-height: 1.7; color: #374151; margin-bottom: 20px;">
-        Enjoy your special day!
-      </p>
-    </div>
-    <div style="margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 30px; text-align: left;">
-      <p style="margin: 0; font-size: 16px;">Best Regards,<br/><strong>TensorGo Intranet</strong></p>
-    </div>
+    <p>Hello ${data.employeeName},</p>
+    <p>Wishing you a very happy birthday!</p>
+    <p>May the year ahead bring you success, good health, and many moments that make you smile.</p>
+    <p>Have a wonderful day and a fantastic year ahead.</p>
+    
+    <p>Regards,<br/>TensorGo HR Team</p>
   `;
 
   return generateEmailWrapper(
-    `HAPPY BIRTHDAY ${data.employeeName.toUpperCase()}`,
+    'Birthday Greetings from TensorGo',
     content,
     uniqueId,
     `Wishing you a very happy birthday, ${data.employeeName}!`
@@ -1238,22 +1183,18 @@ const generateBirthdayWishEmailHtml = (data: BirthdayWishEmailData): string => {
 
 const generateBirthdayWishEmailText = (data: BirthdayWishEmailData): string => {
   return `
-HAPPY BIRTHDAY ${data.employeeName.toUpperCase()}
+Birthday Greetings from TensorGo
 
-Dear ${data.employeeName},
+Hello ${data.employeeName},
 
 Wishing you a very happy birthday!
+May the year ahead bring you success, good health, and many moments that make you smile.
+Have a wonderful day and a fantastic year ahead.
 
-May the year ahead bring you success, happiness, and new achievements. We value your contributions to TensorGo and look forward to another great year together.
+Regards,
+TensorGo HR Team
 
-Enjoy your special day!
-
-Best Regards,
-TensorGo Intranet
-
----
-This is an automated birthday wish from TensorGo Intranet.
-Please do not reply to this email.
+This is an auto-generated email from the TensorGo Intranet. Please do not reply to this message.
   `;
 };
 
@@ -1266,7 +1207,7 @@ export const sendBirthdayWishEmail = async (
   const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
   const uniqueId = `${timestamp}${randomStr}`;
 
-  const emailSubject = `Happy Birthday ${data.employeeName}! [Ref: ${uniqueId}]`;
+  const emailSubject = `Birthday Greetings from TensorGo [Ref: ${uniqueId}]`;
   const emailHtml = generateBirthdayWishEmailHtml(data);
   const emailText = generateBirthdayWishEmailText(data);
 
@@ -1305,41 +1246,17 @@ const generateLeaveCarryForwardEmailHtml = (data: LeaveCarryForwardEmailData): s
   const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
   const uniqueId = `${timestamp}${randomStr}`;
 
-  const carriedForwardRows = [];
-  if (data.carriedForwardLeaves.casual) {
-    carriedForwardRows.push({ label: 'Casual Leave Carried:', value: `${data.carriedForwardLeaves.casual} days` });
-  }
-  if (data.carriedForwardLeaves.sick) {
-    carriedForwardRows.push({ label: 'Sick Leave Carried:', value: `${data.carriedForwardLeaves.sick} days` });
-  }
-  if (data.carriedForwardLeaves.lop) {
-    carriedForwardRows.push({ label: 'LOP Carried:', value: `${data.carriedForwardLeaves.lop} days` });
-  }
-
-  const detailsTable = generateDetailsTable([
-    { label: 'Previous Year:', value: data.previousYear, isBold: true },
-    { label: 'New Year:', value: data.newYear, isBold: true },
-    ...carriedForwardRows,
-    { label: 'Current Casual Bal:', value: `${data.newYearBalances.casual} days`, isBold: true },
-    { label: 'Current Sick Bal:', value: `${data.newYearBalances.sick} days`, isBold: true },
-    { label: 'Current LOP Bal:', value: `${data.newYearBalances.lop} days`, isBold: true },
-  ]);
-
   const content = `
-    <p>Dear ${data.employeeName},</p>
-    <p>Your leave balances from <strong>${data.previousYear}</strong> have been carried forward to the new year <strong>${data.newYear}</strong>.</p>
-    <h3 style="margin: 30px 0 10px 0; font-size: 18px;">Carry Forward Details</h3>
-    ${detailsTable}
-    <div style="margin-top: 30px; padding: 15px; background-color: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 4px;">
-      <p style="margin: 0; color: #1e40af; font-size: 14px;"><strong>Note:</strong> Carry-forward is subject to the company's leave policy limits.</p>
-    </div>
-    <p style="margin-top: 30px;">Please log in to your portal to view your updated leave summary.</p>
-    <p>For any discrepancies, contact HR.</p>
-    <p>Best Regards,<br/><strong>TensorGo Intranet</strong></p>
+    <p>Hello ${data.employeeName},</p>
+    <p>Your leave balances from <strong>${data.previousYear}</strong> have been carried forward to <strong>${data.newYear}</strong> as per the company leave policy.</p>
+    <p>Please log in to your portal to view your updated leave balances.</p>
+    <p>For any queries or discrepancies, please contact the HR team.</p>
+
+    <p>Regards,<br/>TensorGo HR Team</p>
   `;
 
   return generateEmailWrapper(
-    'Leave Carry Forward Notification',
+    'Leave Carry Forward Update – New Year Balance',
     content,
     uniqueId,
     `Leaves from ${data.previousYear} carried forward to ${data.newYear}`
@@ -1347,37 +1264,19 @@ const generateLeaveCarryForwardEmailHtml = (data: LeaveCarryForwardEmailData): s
 };
 
 const generateLeaveCarryForwardEmailText = (data: LeaveCarryForwardEmailData): string => {
-  const carriedForwardItems = [];
-  if (data.carriedForwardLeaves.casual) {
-    carriedForwardItems.push(`${data.carriedForwardLeaves.casual} Casual ${data.carriedForwardLeaves.casual === 1 ? 'Leave' : 'Leaves'}`);
-  }
-  if (data.carriedForwardLeaves.sick) {
-    carriedForwardItems.push(`${data.carriedForwardLeaves.sick} Sick ${data.carriedForwardLeaves.sick === 1 ? 'Leave' : 'Leaves'}`);
-  }
-  if (data.carriedForwardLeaves.lop) {
-    carriedForwardItems.push(`${data.carriedForwardLeaves.lop} LOP ${data.carriedForwardLeaves.lop === 1 ? 'Leave' : 'Leaves'}`);
-  }
-
   return `
-Leave Carry Forward Notification
+Leave Carry Forward Update – New Year Balance
 
-Dear ${data.employeeName},
+Hello ${data.employeeName},
 
-Your leave balances from ${data.previousYear} have been carried forward to ${data.newYear}.
+Your leave balances from ${data.previousYear} have been carried forward to ${data.newYear} as per the company leave policy.
+Please log in to your portal to view your updated leave balances.
+For any queries or discrepancies, please contact the HR team.
 
-Carry Forward Details:
-- Carried Forward: ${carriedForwardItems.join(', ') || 'None'}
-- New Year (${data.newYear}) Balances:
-  * Casual Leave: ${data.newYearBalances.casual} ${data.newYearBalances.casual === 1 ? 'day' : 'days'}
-  * Sick Leave: ${data.newYearBalances.sick} ${data.newYearBalances.sick === 1 ? 'day' : 'days'}
-  * LOP: ${data.newYearBalances.lop} ${data.newYearBalances.lop === 1 ? 'day' : 'days'}
+Regards,
+TensorGo HR Team
 
-Best Regards,
-TensorGo Intranet
-
----
-This is an automated email from TensorGo Intranet.
-Please do not reply to this email.
+This is an auto-generated email from the TensorGo Intranet. Please do not reply to this message.
   `;
 };
 
@@ -1389,7 +1288,7 @@ export const sendLeaveCarryForwardEmail = async (
   const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
   const uniqueId = `${timestamp}${randomStr}`;
 
-  const emailSubject = `Leave Carry Forward - ${data.previousYear} to ${data.newYear} [Ref: ${uniqueId}]`;
+  const emailSubject = `Leave Carry Forward Update – New Year Balance [Ref: ${uniqueId}]`;
   const emailHtml = generateLeaveCarryForwardEmailHtml(data);
   const emailText = generateLeaveCarryForwardEmailText(data);
 
@@ -1501,8 +1400,6 @@ Hello ${data.managerName},
 
 An urgent leave request has been submitted by ${data.employeeName} (Employee ID: ${data.employeeEmpId}) and requires your immediate attention.
 
-URGENT: This leave application requires your immediate attention and prompt review.
-
 Leave Application Details
 • Employee Name: ${data.employeeName}
 • Employee ID: ${data.employeeEmpId}
@@ -1611,9 +1508,6 @@ export const sendEmployeeDetailsUpdateEmail = async (
 
 
 
-// ============================================================================
-// LOP TO CASUAL CONVERSION EMAIL REMOVED AS PER USER REQUEST
-// ============================================================================
 
 // ============================================================================
 // HOLIDAY CALENDAR REMINDER EMAIL
@@ -1634,22 +1528,15 @@ const generateHolidayCalendarReminderEmailHtml = (data: HolidayCalendarReminderE
 
   const content = `
     <p>Hello ${data.recipientName},</p>
-    <p>This is a reminder to review and update the organizational holiday calendar for the upcoming year <strong>${data.nextYear}</strong>.</p>
-    <p>Kindly ensure it is finalized and published before the new year.</p>
-    <h3 style="margin: 30px 0 10px 0; font-size: 16px;">Action Steps:</h3>
-    <ul style="color: #374151; font-size: 16px; line-height: 1.6;">
-      <li>Log in to the Admin Portal.</li>
-      <li>Navigate to Leave Settings > Holiday Calendar.</li>
-      <li>Add the holiday list for ${data.nextYear}.</li>
-    </ul>
-    <p style="margin-top: 30px;">Best Regards,<br/><strong>TensorGo Intranet</strong></p>
+    <p>This is a reminder to review and update the organizational holiday calendar for the upcoming year. Kindly ensure it is finalized and published before the new year.</p>
+    <p>Regards,<br/>TensorGo HR Team</p>
   `;
 
   return generateEmailWrapper(
-    'Upcoming Year Holiday List Reminder',
+    'Reminder: Update Upcoming Year Holiday Calendar',
     content,
     uniqueId,
-    `Action Required: Update holiday calendar for ${data.nextYear}`
+    `Action Required: Update holiday calendar`
   );
 };
 
@@ -1662,16 +1549,12 @@ Reminder: Update Upcoming Year Holiday Calendar
 
 Hello ${data.recipientName},
 
-This is a reminder to review and update the organizational holiday calendar for the upcoming year ${data.nextYear}.
-Kindly ensure it is finalized and published before the new year.
+This is a reminder to review and update the organizational holiday calendar for the upcoming year. Kindly ensure it is finalized and published before the new year.
 
-Action Steps:
-- Log in to the Admin Portal.
-- Navigate to Leave Settings > Holiday Calendar.
-- Add the holiday list for ${data.nextYear}.
+Regards,
+TensorGo HR Team
 
-Best Regards,
-TensorGo Intranet
+This is an auto-generated email from the TensorGo Intranet. Please do not reply to this message.
   `;
 };
 
@@ -1799,73 +1682,118 @@ export const sendTimesheetReminderEmail = async (
   const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
   const uniqueId = `${timestamp}${randomStr}`;
 
-  let title = 'Timesheet Reminder';
-  let message = '';
+  let subject = '';
+  let title = '';
+  let contentHtml = '';
+  let contentText = '';
   let preview = '';
-  let buttonText = 'Update Timesheet';
 
   if (data.reminderType === 'daily') {
-    title = 'Reminder: Daily Timesheet Pending';
-    message = `
+    subject = 'Reminder: Daily Timesheet Pending';
+    title = 'Daily Timesheet Reminder';
+    contentHtml = `
       <p>Hello ${data.employeeName},</p>
       <p>Our records indicate that your timesheet for today (<strong>${data.date}</strong>) has not yet been submitted.</p>
       <p>Timely updates are important to ensure accurate project tracking, team coordination, and operational planning.</p>
       <p>Please log in to portal and update your timesheet at the earliest.</p>
+      <p>Regards,<br/>TensorGo HR Team</p>
+    `;
+    contentText = `
+Reminder: Daily Timesheet Pending
+
+Hello ${data.employeeName},
+
+Our records indicate that your timesheet for today (${data.date}) has not yet been submitted.
+
+Timely updates are important to ensure accurate project tracking, team coordination, and operational planning.
+
+Please log in to portal and update your timesheet at the earliest.
+
+Regards,
+TensorGo HR Team
+
+This is an auto-generated email from the TensorGo Intranet. Please do not reply to this message.
     `;
     preview = `Daily timesheet pending for ${data.date}`;
   } else if (data.reminderType === 'friday_alert') {
-    title = 'Timesheet Alert: Low Hours'; // Header as per request image (Subject is slightly longer)
-    message = `
+    subject = 'Timesheet Alert: Weekly Hours Below Expected Threshold';
+    title = 'Weekly Timesheet Alert';
+    contentHtml = `
       <p>Hello ${data.employeeName},</p>
       <p>Your logged timesheet hours for this week are currently below the expected threshold.</p>
       <p><strong>Logged Hours:</strong> ${data.hoursLogged}</p>
       <p><strong>Expected Weekly Hours:</strong> 40</p>
       <p><strong>Submission Deadline:</strong> Saturday 9 PM</p>
-      <div style="margin: 25px 0; text-align: center;">
-        <a href="https://intra.tensorgo.com/project-management" style="background-color:#1e3a8a;color:#ffffff;display:inline-block;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;line-height:44px;text-align:center;text-decoration:none;width:200px;border-radius:4px;">${buttonText}</a>
-      </div>
       <p>Please review and update your timesheet to ensure alignment with project tracking, workload planning, and team coordination.</p>
-      <p>If you believe this alert has been triggered in error or need assistance, please contact your reporting manager or HR.</p>
+      <p>If you believe this alert has been triggered in error or need assistance, please contact your reporting manager or HR at hr@tensorgo.com.</p>
+      <p>Regards,<br/>TensorGo HR Team</p>
+    `;
+    contentText = `
+Timesheet Alert: Weekly Hours Below Expected Threshold
+
+Hello ${data.employeeName},
+
+Your logged timesheet hours for this week are currently below the expected threshold.
+
+Logged Hours: ${data.hoursLogged}
+Expected Weekly Hours: 40
+Submission Deadline: Saturday 9 PM
+
+Please review and update your timesheet to ensure alignment with project tracking, workload planning, and team coordination.
+
+If you believe this alert has been triggered in error or need assistance, please contact your reporting manager or HR at hr@tensorgo.com.
+
+Regards,
+TensorGo HR Team
+
+This is an auto-generated email from the TensorGo Intranet. Please do not reply to this message.
     `;
     preview = `Weekly hours alert: ${data.hoursLogged} hours logged`;
-  } else if (data.reminderType === 'criteria_not_met') {
-    title = 'Timesheet Criteria Not Met';
-    message = `
+  } else {
+    // criteria_not_met or other
+    subject = 'Timesheet Criteria Not Met – Immediate Action Required';
+    title = 'Timesheet Alert';
+    contentHtml = `
       <p>Hello ${data.employeeName},</p>
       <p>Your timesheet for the current week does not meet the required submission criteria.</p>
       <p><strong>Logged Hours:</strong> ${data.hoursLogged}</p>
       <p><strong>Minimum Required Hours:</strong> 40</p>
       <p><strong>Timesheet Status:</strong> <span style="color: #dc2626; font-weight: bold;">Not Submitted / Incomplete</span></p>
       <p>Timely submission is essential to ensure accurate project visibility, workload planning, and team coordination.</p>
-      <div style="margin: 25px 0; text-align: center;">
-        <a href="https://intra.tensorgo.com/project-management" style="background-color:#1e3a8a;color:#ffffff;display:inline-block;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;line-height:44px;text-align:center;text-decoration:none;width:200px;border-radius:4px;">${buttonText}</a>
-      </div>
       <p style="color: #dc2626; font-weight: bold;">Action Required: Please log in and update your timesheet immediately.</p>
       <p>If you require assistance or believe this notification was triggered in error, please contact your reporting manager or HR.</p>
+      <p>Regards,<br/>TensorGo HR Team</p>
+    `;
+    contentText = `
+${subject}
+
+Hello ${data.employeeName},
+
+Your timesheet for the current week does not meet the required submission criteria.
+
+Logged Hours: ${data.hoursLogged}
+Minimum Required Hours: 40
+Timesheet Status: Not Submitted / Incomplete
+
+Timely submission is essential to ensure accurate project visibility, workload planning, and team coordination.
+
+Action Required: Please log in and update your timesheet immediately.
+
+If you require assistance or believe this notification was triggered in error, please contact your reporting manager or HR.
+
+Regards,
+TensorGo HR Team
+
+This is an auto-generated email from the TensorGo Intranet. Please do not reply to this message.
     `;
     preview = 'Immediate action required: Timesheet criteria not met';
   }
 
-  // Common Footer
-  const content = `
-    ${message}
-    ${data.reminderType === 'daily' ? `
-    <div style="margin: 25px 0; text-align: center;">
-      <a href="https://intra.tensorgo.com/project-management" style="background-color:#1e3a8a;color:#ffffff;display:inline-block;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;line-height:44px;text-align:center;text-decoration:none;width:200px;border-radius:4px;">${buttonText}</a>
-    </div>` : ''}
-    <p>Regards,<br/>TensorGo HR Team</p>
-  `;
-
-  // Determine Subject based on type
-  let subject = title;
-  if (data.reminderType === 'friday_alert') subject = 'Timesheet Alert: Weekly Hours Below Expected Threshold';
-  if (data.reminderType === 'criteria_not_met') subject = 'Timesheet Criteria Not Met – Immediate Action Required';
-
   return await sendEmail({
     to: recipientEmail,
-    subject: `${subject}`,
-    html: generateEmailWrapper(title, content, uniqueId, preview),
-    text: `${subject}\n\n${message.replace(/<\/?[^>]+(>|$)/g, "")}` // Simple text stripping
+    subject: subject,
+    html: generateEmailWrapper(title, contentHtml, uniqueId, preview),
+    text: contentText.trim()
   });
 };
 
@@ -1885,31 +1813,8 @@ export const sendTimesheetSubmissionEmail = async (
 
   const content = `
     <p>Hello ${data.managerName || 'Manager'},</p>
-    <p><strong>${data.employeeName}</strong>, who reports to you, has submitted their timesheet. Please log in to the portal to review and approve it.</p>
-    
-    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 20px; margin: 20px 0;">
-      <table style="width: 100%; font-size: 14px; color: #374151;">
-        <tr>
-          <td style="padding: 5px 0; width: 40%; color: #64748b;">Employee Name:</td>
-          <td style="padding: 5px 0; font-weight: bold;">${data.employeeName}</td>
-        </tr>
-        <tr>
-          <td style="padding: 5px 0; color: #64748b;">Weekly Hours:</td>
-          <td style="padding: 5px 0; font-weight: bold;">${data.hoursLogged} hours</td>
-        </tr>
-         <tr>
-          <td style="padding: 5px 0; color: #64748b;">Period:</td>
-          <td style="padding: 5px 0; font-weight: bold;">${data.startDate} to ${data.endDate}</td>
-        </tr>
-        <tr>
-          <td style="padding: 5px 0; color: #64748b;">Status:</td>
-          <td style="padding: 5px 0; font-weight: bold; color: #1e3a8a; text-transform: uppercase;">SUBMITTED</td>
-        </tr>
-      </table>
-    </div>
-
-    <p style="margin-top: 30px;">For any clarification, please contact HR.</p>
-    <p>This is an auto-generated email. Please do not reply.</p>
+    <p>${data.employeeName}, who reports to you, has submitted their timesheet. Please log in to the portal to review and approve it.</p>
+    <p>For any clarification, please contact HR.</p>
     <p>Regards,<br/>TensorGo HR Team</p>
   `;
 
@@ -1917,7 +1822,20 @@ export const sendTimesheetSubmissionEmail = async (
     to: managerEmail,
     subject: `${subject} [Ref: ${uniqueId}]`,
     html: generateEmailWrapper(title, content, uniqueId, `${data.employeeName} has submitted their timesheet`),
-    text: `${subject}\n\nHello ${data.managerName},\n\n${data.employeeName} has submitted their timesheet.\nHours: ${data.hoursLogged}\nPeriod: ${data.startDate} to ${data.endDate}\n\nPlease review and approve.`
+    text: `
+Timesheet Submitted – Review Required
+
+Hello ${data.managerName || 'Manager'},
+
+${data.employeeName}, who reports to you, has submitted their timesheet. Please log in to the portal to review and approve it.
+
+For any clarification, please contact HR.
+
+Regards,
+TensorGo HR Team
+
+This is an auto-generated email from the TensorGo Intranet. Please do not reply to this message.
+    `.trim()
   });
 };
 
@@ -1990,8 +1908,29 @@ export const sendTimesheetSummaryEmail = async (
   return await sendEmail({
     to: managerEmail,
     subject: `Weekly Timesheet Summary – Team Status Report [Ref: ${uniqueId}]`,
-    html: generateEmailWrapper(title, content, uniqueId, 'Weekly timesheet status summary for your team'),
-    text: `Weekly Timesheet Summary – Team Status Report\n\nPeriod: ${data.startDate} to ${data.endDate}\n\nSubmissions:\n${data.submissions.map(s => `${s.name}: ${s.hours}h (SUBMITTED)`).join('\n')}\n\nMissed Submissions:\n${data.failures.map(f => `${f.name}: ${f.hours}h (FAILED)`).join('\n')}`
+    html: generateEmailWrapper('Weekly Timesheet Summary', content, uniqueId, `Team status report for ${data.startDate} to ${data.endDate}`),
+    text: `
+Weekly Timesheet Summary – Team Status Report
+
+Hello ${data.managerName || 'Manager'},
+
+Please find below the weekly timesheet summary for your team for the period ${data.startDate} to ${data.endDate}.
+
+Auto-Submissions (Confirmed)
+${data.submissions.length > 0 ? data.submissions.map(s => `• ${s.name}: ${s.hours} hours`).join('\n') : '(None)'}
+
+Missed Submissions (Action Required)
+${data.failures.length > 0 ? data.failures.map(f => `• ${f.name}: ${f.hours} hours`).join('\n') : '(None)'}
+
+Please review submitted timesheets and follow up on any pending or incomplete entries to ensure accurate project tracking and planning.
+
+For assistance, contact HR.
+
+Regards,
+TensorGo HR Team
+
+This is an auto-generated email from the TensorGo Intranet. Please do not reply to this message.
+    `.trim()
   });
 };
 
@@ -2010,31 +1949,14 @@ const generateTimesheetApprovedEmailHtml = (data: TimesheetStatusEmailData): str
 
   const content = `
     <p>Hello ${data.employeeName},</p>
-    <p>Your timesheet for the period <strong>${data.startDate}</strong> to <strong>${data.endDate}</strong> has been <strong>approved</strong> by <strong>${approver}</strong>.</p>
+    <p>Your timesheet for the period <strong>${data.startDate}</strong> to <strong>${data.endDate}</strong> has been approved by <strong>${approver}</strong></p>
     
-    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 20px; margin: 20px 0;">
-      <table style="width: 100%; font-size: 14px; color: #374151;">
-        <tr>
-          <td style="padding: 5px 0; width: 40%; color: #64748b;">Status:</td>
-          <td style="padding: 5px 0; font-weight: bold; color: #166534; text-transform: uppercase;">APPROVED</td>
-        </tr>
-        <tr>
-          <td style="padding: 5px 0; color: #64748b;">Period:</td>
-          <td style="padding: 5px 0; font-weight: bold;">${data.startDate} to ${data.endDate}</td>
-        </tr>
-        <tr>
-          <td style="padding: 5px 0; color: #64748b;">Action By:</td>
-          <td style="padding: 5px 0; font-weight: bold;">${approver}</td>
-        </tr>
-      </table>
-    </div>
-
-    <p>If you notice any discrepancies, please contact your reporting manager or HR.</p>
+    <p style="margin-top: 20px;">If you notice any discrepancies, please contact your reporting manager or HR.</p>
     <p>Regards,<br/>TensorGo HR Team</p>
   `;
 
   return generateEmailWrapper(
-    'Timesheet Approved',
+    'Timesheet Approved – Confirmation',
     content,
     uniqueId,
     `Your timesheet for ${data.startDate} to ${data.endDate} has been approved`
@@ -2048,16 +1970,13 @@ Timesheet Approved – Confirmation
 
 Hello ${data.employeeName},
 
-Your timesheet for the period ${data.startDate} to ${data.endDate} has been approved by ${approver}.
-
-Status: APPROVED
-Period: ${data.startDate} to ${data.endDate}
-Action By: ${approver}
+Your timesheet for the period ${data.startDate} to ${data.endDate} has been approved by ${approver}
 
 If you notice any discrepancies, please contact your reporting manager or HR.
 
 Regards,
 TensorGo HR Team
+
 This is an auto-generated email from the TensorGo Intranet. Please do not reply to this message.
   `;
 };
@@ -2093,36 +2012,20 @@ const generateTimesheetRejectedEmailHtml = (data: TimesheetStatusEmailData): str
 
   const content = `
     <p>Hello ${data.employeeName},</p>
-    <p>Your timesheet for <strong>${data.logDate}</strong> has been reviewed and <strong>rejected</strong>.</p>
+    <p>Your timesheet for <strong>${data.logDate}</strong> has been reviewed and rejected.</p>
     
-    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 20px; margin: 20px 0;">
-      <table style="width: 100%; font-size: 14px; color: #374151;">
-        <tr>
-          <td style="padding: 5px 0; width: 40%; color: #64748b;">Status:</td>
-          <td style="padding: 5px 0; font-weight: bold; color: #dc2626; text-transform: uppercase;">REJECTED</td>
-        </tr>
-        <tr>
-          <td style="padding: 5px 0; color: #64748b;">Date:</td>
-          <td style="padding: 5px 0; font-weight: bold;">${data.logDate}</td>
-        </tr>
-        <tr>
-          <td style="padding: 5px 0; color: #64748b;">Reason:</td>
-          <td style="padding: 5px 0; font-weight: bold;">${data.reason}</td>
-        </tr>
-        <tr>
-          <td style="padding: 5px 0; color: #64748b;">Action By:</td>
-          <td style="padding: 5px 0; font-weight: bold;">${approver}</td>
-        </tr>
-      </table>
-    </div>
+    <p style="margin: 15px 0;">
+      <strong>Reason:</strong> ${data.reason}<br/>
+      <strong>Reviewed By:</strong> ${approver}
+    </p>
 
-    <p style="color: #dc2626; font-weight: bold;">Action Required: Please log in to the portal to correct and resubmit your timesheet at the earliest to avoid reporting delays.</p>
+    <p>Please log in to the TensorGo Intranet to update and resubmit your timesheet at the earliest to avoid reporting delays.</p>
     <p>For any clarification, contact your reporting manager or HR.</p>
     <p>Regards,<br/>TensorGo HR Team</p>
   `;
 
   return generateEmailWrapper(
-    'Timesheet Rejected',
+    'Timesheet Rejected – Action Required',
     content,
     uniqueId,
     `Your timesheet for ${data.logDate} has been rejected`
@@ -2138,16 +2041,15 @@ Hello ${data.employeeName},
 
 Your timesheet for ${data.logDate} has been reviewed and rejected.
 
-Status: REJECTED
-Date: ${data.logDate}
 Reason: ${data.reason}
 Reviewed By: ${approver}
 
-Action Required: Please log in to the portal to correct and resubmit your timesheet at the earliest to avoid reporting delays.
+Please log in to the TensorGo Intranet to update and resubmit your timesheet at the earliest to avoid reporting delays.
 For any clarification, contact your reporting manager or HR.
 
 Regards,
 TensorGo HR Team
+
 This is an auto-generated email from the TensorGo Intranet. Please do not reply to this message.
   `;
 };

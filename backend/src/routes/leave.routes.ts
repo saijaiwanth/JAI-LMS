@@ -25,9 +25,6 @@ router.get('/request/:id', leaveController.getLeaveRequest);
 router.put('/request/:id', leaveController.updateLeaveRequest);
 router.delete('/request/:id', validateRequest(deleteLeaveSchema), leaveController.deleteLeaveRequest);
 router.get('/request/:requestId/medical-certificate/signed-url', leaveController.getMedicalCertificateSignedUrl);
-// HR and Super Admin can convert leave request from LOP to Casual
-// Super Admin can convert leave request from LOP to Casual if proof exists
-router.post('/request/:id/convert-lop-to-casual', authorizeRole('hr', 'super_admin'), leaveController.convertLeaveRequestLopToCasual);
 
 // Approval routes (Manager, HR, Super Admin)
 router.get('/pending', authorizeRole('manager', 'hr', 'super_admin'), leaveController.getPendingRequests);
