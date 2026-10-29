@@ -1,6 +1,6 @@
-# 🚀 TensorGo HR-LMS - Complete Enterprise HR Management System
+ HR-LMS - Complete Enterprise HR Management System
 
-Welcome to the **TensorGo HR Leave Management System (HR-LMS)**. A comprehensive, enterprise-grade HR solution that manages the complete employee lifecycle with advanced leave management, timesheet tracking, and intelligent automation.
+Welcome to the *HR Leave Management System (HR-LMS)**. A comprehensive, enterprise-grade HR solution that manages the complete employee lifecycle with advanced leave management, timesheet tracking, and intelligent automation.
 
 ---
 
@@ -244,7 +244,7 @@ When a Manager's status changes to Resigned/Inactive/Terminated:
 ## 🚀 Getting Started
 
 ### **First-Time Login**
-1. **Access Portal**: Use your organization email (`@tensorgo.com` or `@tensorgo.co.in`)
+1. **Access Portal**: Use your organization email 
 2. **Change Password**: Set a permanent password on first login
 3. **Complete Profile**: Update personal details and upload photo
 4. **Explore Dashboard**: Check leave balances and timesheet status
@@ -326,11 +326,8 @@ npm run dev
 
 ## 📞 Support
 
-For technical support or feature requests, contact the TensorGo Dev Team.
+For technical support or feature requests, 
 
----
-
-*Built with ❤️ by the TensorGo Development Team*
-
+Developed By Sai Jaiwanth 
 **Version**: 2.1  
 **Last Updated**: February 2026
